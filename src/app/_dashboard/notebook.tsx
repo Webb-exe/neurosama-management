@@ -1,6 +1,5 @@
-"use client";
-
 import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { usePaginatedQuery, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -38,11 +37,14 @@ import {
   Target,
   TestTube,
 } from "lucide-react";
-import Link from "next/link";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormattedDate } from "@/components/ui/timezone-date-input";
 import { useTimezone } from "@/context/TimezoneContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+export const Route = createFileRoute("/_dashboard/notebook")({
+  component: NotebookPage,
+});
 
 const categories = [
   { value: "design", label: "Design", icon: Palette, color: "bg-purple-500" },
@@ -73,7 +75,7 @@ function EntryCard({ entry }: {
   const preview = entry.content.replace(/<[^>]*>/g, "").slice(0, 150);
 
   return (
-    <Link href={`/notebook/${entry._id}`}>
+    <Link to="/notebook/$id" params={{ id: entry._id }}>
       <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
@@ -116,7 +118,7 @@ function EntryCard({ entry }: {
   );
 }
 
-export default function NotebookPage() {
+function NotebookPage() {
   const { dateToUtcTimestamp } = useTimezone();
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
   const [createOpen, setCreateOpen] = useState(false);

@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +33,7 @@ export function TeamCard({ team }: TeamCardProps) {
     .slice(0, 2);
 
   return (
-    <Link href={`/teams/${team._id}`}>
+    <Link to="/teams/$id" params={{ id: team._id }}>
       <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">

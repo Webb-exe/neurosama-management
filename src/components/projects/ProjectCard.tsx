@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +33,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
     project.taskStats.review;
 
   return (
-    <Link href={`/projects/${project._id}`}>
+    <Link to="/projects/$id" params={{ id: project._id }}>
       <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">

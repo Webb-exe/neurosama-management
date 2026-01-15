@@ -1,6 +1,5 @@
-"use client";
-
 import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,10 @@ import {
   Wrench,
   AlertTriangle,
 } from "lucide-react";
-import Link from "next/link";
+
+export const Route = createFileRoute("/_dashboard/robot")({
+  component: RobotPage,
+});
 
 const subsystemTypes = [
   { value: "drivetrain", label: "Drivetrain", icon: Cog },
@@ -82,7 +84,7 @@ function SubsystemCard({ subsystem }: {
   const Icon = typeInfo?.icon || Wrench;
 
   return (
-    <Link href={`/robot/${subsystem._id}`}>
+    <Link to="/robot/$id" params={{ id: subsystem._id }}>
       <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
@@ -140,7 +142,7 @@ function SubsystemCard({ subsystem }: {
   );
 }
 
-export default function RobotPage() {
+function RobotPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",

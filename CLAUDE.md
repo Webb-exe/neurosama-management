@@ -4,26 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Robotics Team Manager is a Next.js web application for managing FTC (FIRST Tech Challenge) robotics team operations including competitions, tasks, robot subsystems, inventory, engineering notebooks, scouting, and meetings.
+Robotics Team Manager is a TanStack Start web application for managing FTC (FIRST Tech Challenge) robotics team operations including competitions, tasks, robot subsystems, inventory, engineering notebooks, scouting, and meetings.
 
-**Stack**: Next.js 15.5, React 19, Convex (backend/database), Clerk (authentication), Tailwind CSS, Radix UI/shadcn, Bun
+**Stack**: TanStack Start, TanStack Router, React 19, Convex (backend/database), Clerk (authentication), Tailwind CSS, Radix UI/shadcn, Vite
 
 ## Common Commands
 
 ```bash
-bun run dev           # Start both frontend (Next.js) and backend (Convex)
-bun run dev:frontend  # Start only Next.js dev server
-bun run dev:backend   # Start only Convex backend
-bun run build         # Production build
-bun run lint          # Run ESLint
+npm run dev           # Start both frontend (Vite) and backend (Convex)
+npm run dev:frontend  # Start only Vite dev server
+npm run dev:backend   # Start only Convex backend
+npm run build         # Production build
+npm run lint          # Run ESLint
 ```
 
 ## Architecture
 
 ### Frontend (`src/app/`)
-- Uses Next.js App Router with route groups
-- `(dashboard)/` - Protected routes requiring authentication
-- `login/`, `signup/` - Clerk authentication pages
+- Uses TanStack Router file-based routing
+- `__root.tsx` - Root layout with providers (Clerk, Convex, Auth, Timezone)
+- `_dashboard.tsx` - Layout route wrapping protected dashboard pages
+- `_dashboard/` - Protected routes requiring authentication
+  - `index.tsx` - Dashboard home page
+  - `projects.tsx`, `projects.$id.tsx` - Projects and detail pages
+  - `tasks.tsx` - My Tasks page
+  - etc.
+- `login.tsx`, `signup.tsx` - Clerk authentication pages
 - Path alias: `@/*` maps to `./src/*`
 
 ### Backend (`src/convex/`)
@@ -34,7 +40,7 @@ bun run lint          # Run ESLint
 
 ### Authentication Flow
 1. Clerk handles sign-in/sign-up
-2. Middleware (`middleware.ts`) protects routes, redirects unauthenticated users to `/login`
+2. `_dashboard.tsx` layout uses RequireAuth component to protect routes
 3. `AuthContext` manages user state and approval status via Convex
 4. User roles: "owner", "admin", "member"
 
@@ -49,6 +55,13 @@ await mutate({ args });
 
 // Auth context
 const { user, isApproved, authStatus } = useAuthContext();
+
+// Navigation with TanStack Router
+import { Link, useNavigate } from "@tanstack/react-router";
+<Link to="/projects/$id" params={{ id: projectId }}>View Project</Link>
+
+const navigate = useNavigate();
+navigate({ to: "/projects" });
 ```
 
 ### Key Directories
@@ -56,6 +69,7 @@ const { user, isApproved, authStatus } = useAuthContext();
 - `src/components/layout/` - AppShell, Sidebar
 - `src/components/{feature}/` - Feature-specific components (projects/, tasks/, teams/, kanban/)
 - `src/context/AuthContext.tsx` - Authentication state management
+- `src/router.tsx` - TanStack Router configuration
 
 ## Database Schema Highlights
 
@@ -77,13 +91,12 @@ From `.cursor/rules/convex_rules.mdc`:
 
 ## Clerk Guidelines
 
-From `.cursor/rules/clerk.mdc`:
-- Use modern App Router approach with `clerkMiddleware()` from `@clerk/nextjs/server`
-- Never use deprecated `authMiddleware()` or Pages Router patterns
-- ClerkProvider wraps the app in root layout
+- Use `@clerk/clerk-react` for TanStack Start (not `@clerk/nextjs`)
+- ClerkProvider wraps the app in root layout (`__root.tsx`)
+- Use `useAuth`, `SignInButton`, `SignUpButton` from `@clerk/clerk-react`
 
 ## Environment Variables
 
 Required:
-- `NEXT_PUBLIC_CONVEX_URL` - Convex deployment URL
-- Clerk keys (publishable and secret)
+- `VITE_CONVEX_URL` - Convex deployment URL
+- `VITE_CLERK_PUBLISHABLE_KEY` - Clerk publishable key

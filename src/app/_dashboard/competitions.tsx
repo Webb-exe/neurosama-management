@@ -1,6 +1,5 @@
-"use client";
-
 import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -31,13 +30,15 @@ import {
   Calendar,
   MapPin,
   Clock,
-  ArrowRight,
 } from "lucide-react";
-import Link from "next/link";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormattedDate } from "@/components/ui/timezone-date-input";
 import { useTimezone } from "@/context/TimezoneContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+export const Route = createFileRoute("/_dashboard/competitions")({
+  component: CompetitionsPage,
+});
 
 const competitionTypes = [
   { value: "scrimmage", label: "Scrimmage" },
@@ -69,7 +70,7 @@ function CompetitionCard({ competition }: { competition: {
   const daysUntil = Math.ceil((competition.startDate - now) / (1000 * 60 * 60 * 24));
 
   return (
-    <Link href={`/competitions/${competition._id}`}>
+    <Link to="/competitions/$id" params={{ id: competition._id }}>
       <Card className={`hover:border-primary/50 transition-colors cursor-pointer ${isPast ? "opacity-60" : ""}`}>
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
@@ -117,7 +118,7 @@ function CompetitionCard({ competition }: { competition: {
   );
 }
 
-export default function CompetitionsPage() {
+function CompetitionsPage() {
   const { dateToUtcTimestamp } = useTimezone();
   const [showUpcoming, setShowUpcoming] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
