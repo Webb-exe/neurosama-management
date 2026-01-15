@@ -127,7 +127,7 @@ export function FormattedDate({
         day: "numeric",
       };
       break;
-    case "relative":
+    case "relative": {
       // Calculate relative time
       const now = Date.now();
       const diff = now - timestamp;
@@ -151,6 +151,7 @@ export function FormattedDate({
         day: "numeric",
       };
       break;
+    }
   }
 
   const formatted = formatDate(timestamp, options);
