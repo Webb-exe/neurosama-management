@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   Home,
   FolderKanban,
@@ -21,7 +18,6 @@ import {
   GanttChart,
   Globe,
 } from "lucide-react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -177,7 +173,8 @@ function NavLinks({
   userRole: "owner" | "admin" | "member";
   onNavigate?: () => void;
 }) {
-  const pathname = usePathname();
+  const location = useLocation();
+  const pathname = location.pathname;
 
   return (
     <nav className="flex flex-col gap-1">
@@ -209,7 +206,7 @@ function NavLinks({
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                to={item.href}
                 onClick={onNavigate}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
@@ -314,7 +311,7 @@ function TimezoneSelector() {
 }
 
 export function DesktopSidebar() {
-  const { user,clerkInfo } = useAuthContext();
+  const { user, clerkInfo } = useAuthContext();
 
   if (!user) {
     return null;
@@ -323,7 +320,7 @@ export function DesktopSidebar() {
   return (
     <aside className="hidden lg:flex h-screen w-64 flex-col border-r border-border/50 bg-sidebar">
       <div className="flex h-16 items-center border-b border-border/50 px-4">
-        <Link href="/" className="flex items-center gap-3 font-semibold group">
+        <Link to="/" className="flex items-center gap-3 font-semibold group">
           <RobotLogo />
           <div className="flex flex-col">
             <span className="text-sm font-bold text-primary">
@@ -338,16 +335,16 @@ export function DesktopSidebar() {
       <div className="border-t border-border/50 p-4 space-y-3">
         <TimezoneSelector />
         <div className="flex items-center gap-3 rounded-lg bg-accent/50 px-3 py-2">
-          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-            <span className="text-xs font-bold text-primary">
-              <Image
-                src={clerkInfo?.imageUrl || ""}
+          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+            {clerkInfo?.imageUrl && (
+              <img
+                src={clerkInfo.imageUrl}
                 alt={clerkInfo?.firstName || clerkInfo?.emailAddresses?.[0]?.emailAddress || "?"}
                 width={32}
                 height={32}
                 className="rounded-full"
               />
-            </span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
@@ -366,7 +363,7 @@ export function DesktopSidebar() {
 }
 
 export function MobileSidebar() {
-  const { user,clerkInfo } = useAuthContext();
+  const { user, clerkInfo } = useAuthContext();
   const [open, setOpen] = useState(false);
 
   if (!user) {
@@ -384,7 +381,7 @@ export function MobileSidebar() {
       <SheetContent side="left" className="w-64 p-0 bg-sidebar border-border/50">
         <div className="flex h-16 items-center border-b border-border/50 px-4">
           <Link
-            href="/"
+            to="/"
             className="flex items-center gap-3 font-semibold"
             onClick={() => setOpen(false)}
           >
@@ -402,14 +399,16 @@ export function MobileSidebar() {
         <div className="border-t border-border/50 p-4 space-y-3">
           <TimezoneSelector />
           <div className="flex items-center gap-3 rounded-lg bg-accent/50 px-3 py-2">
-            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <Image
-                src={clerkInfo?.imageUrl || ""}
-                alt={clerkInfo?.firstName || clerkInfo?.emailAddresses?.[0]?.emailAddress || "?"}
-                width={32}
-                height={32}
-                className="rounded-full"
-              />
+            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+              {clerkInfo?.imageUrl && (
+                <img
+                  src={clerkInfo.imageUrl}
+                  alt={clerkInfo?.firstName || clerkInfo?.emailAddresses?.[0]?.emailAddress || "?"}
+                  width={32}
+                  height={32}
+                  className="rounded-full"
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">

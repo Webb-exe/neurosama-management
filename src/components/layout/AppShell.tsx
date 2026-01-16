@@ -1,20 +1,18 @@
-"use client";
-
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@clerk/clerk-react";
 import { DesktopSidebar, MobileSidebar } from "./Sidebar";
 import { useAuthContext } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { authStatus, isLoading } = useAuthContext();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!isLoading && authStatus.status === "unauthenticated") {
-      router.push("/login");
+      navigate({ to: "/login" });
     }
-  }, [isLoading, authStatus.status, router]);
+  }, [isLoading, authStatus.status, navigate]);
 
   if (isLoading) {
     return (

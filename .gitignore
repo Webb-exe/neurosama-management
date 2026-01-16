@@ -13,9 +13,11 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# tanstack start / vite
+/.output/
+/.vinxi/
+/dist/
+/src/routeTree.gen.ts
 
 # production
 /build
@@ -38,7 +40,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/

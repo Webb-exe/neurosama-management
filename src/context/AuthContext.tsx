@@ -1,5 +1,3 @@
-"use client";
-
 import {
   createContext,
   useContext,
@@ -10,7 +8,7 @@ import {
   useRef,
 } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { useAuth,useClerk } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/clerk-react";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
 
