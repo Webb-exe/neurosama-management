@@ -13,9 +13,10 @@
 # testing
 /coverage
 
-# tanstack start / vite
+# tanstack start / vite / nitro
 /.output/
 /.vinxi/
+/.nitro/
 /dist/
 /src/routeTree.gen.ts
 
