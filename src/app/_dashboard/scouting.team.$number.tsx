@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useAction, useMutation } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,75 +27,24 @@ import {
   X,
 } from "lucide-react";
 import { useTimezone } from "@/context/TimezoneContext";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
+import { useFtcScoutTeamPage } from "@/lib/ftcScout/hooks";
+import type {
+  FtcTeamPageAward,
+  FtcTeamPageEvent,
+  FtcTeamSummary,
+} from "@/lib/ftcScout/queries";
 
 export const Route = createFileRoute("/_dashboard/scouting/team/$number")({
   component: ScoutingTeamPage,
 });
 
 // ==========================================
-// TYPE DEFINITIONS
-// ==========================================
-
-type LocationFields = {
-  venue: string | null;
-  city: string;
-  state: string;
-  country: string;
-};
-
-type QuickStatFields = {
-  value: number;
-  rank: number;
-};
-
-type QuickStatsFields = {
-  season: number;
-  number: number;
-  tot: QuickStatFields;
-  auto: QuickStatFields;
-  dc: QuickStatFields;
-  eg: QuickStatFields;
-  count: number;
-};
-
-type TeamCoreFragment = {
-  number: number;
-  name: string;
-  schoolName: string | null;
-  rookieYear: number;
-  website: string | null;
-  location: LocationFields;
-  quickStats: QuickStatsFields | null;
-};
-
-type EventCoreFragment = {
-  season: number;
-  code: string;
-  name: string;
-  type: string;
-  location: LocationFields;
-  start: string;
-  end: string;
-  finished: boolean;
-  ongoing: boolean;
-  started: boolean;
-};
-
-type AwardFields = {
-  teamNumber: number;
-  type: string;
-  personName: string | null;
-  placement: number;
-  divisionName: string | null;
-};
-
-// ==========================================
 // HELPER FUNCTIONS
 // ==========================================
 
-function formatLocation(location: LocationFields): string {
+function formatLocation(location: FtcTeamSummary["location"]): string {
   const parts = [location.city, location.state, location.country].filter(
     Boolean
   );
@@ -111,7 +60,7 @@ function TeamHeader({
   onRefresh,
   isRefreshing,
 }: {
-  team: TeamCoreFragment;
+  team: FtcTeamSummary;
   onRefresh: () => void;
   isRefreshing: boolean;
 }) {
@@ -227,7 +176,7 @@ function EventCard({
   event,
 }: {
   eventCode: string;
-  event: EventCoreFragment;
+  event: FtcTeamPageEvent;
 }) {
   const { formatDate } = useTimezone();
   const navigate = useNavigate();
@@ -294,10 +243,8 @@ function EventsTab({
   events,
 }: {
   events: Array<{
-    id: string;
     eventCode: string;
-    eventData: EventCoreFragment;
-    startDate: number;
+    eventData: FtcTeamPageEvent;
   }>;
 }) {
   if (events.length === 0) {
@@ -312,10 +259,10 @@ function EventsTab({
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
       {events.map((event) => (
         <EventCard
-          key={event.id}
+          key={event.eventCode}
           eventCode={event.eventCode}
           event={event.eventData}
         />
@@ -324,7 +271,7 @@ function EventsTab({
   );
 }
 
-function AwardsTab({ awards }: { awards: Array<{ awardData: AwardFields }> }) {
+function AwardsTab({ awards }: { awards: FtcTeamPageAward[] }) {
   if (awards.length === 0) {
     return (
       <Card>
@@ -337,7 +284,7 @@ function AwardsTab({ awards }: { awards: Array<{ awardData: AwardFields }> }) {
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
       {awards.map((award, idx) => (
         <Card key={idx}>
           <CardContent className="flex items-center gap-4 p-4">
@@ -346,14 +293,14 @@ function AwardsTab({ awards }: { awards: Array<{ awardData: AwardFields }> }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold">{award.awardData.type}</h3>
-                {award.awardData.placement > 0 && (
-                  <Badge variant="outline">#{award.awardData.placement}</Badge>
+                <h3 className="font-semibold">{award.type}</h3>
+                {award.placement > 0 && (
+                  <Badge variant="outline">#{award.placement}</Badge>
                 )}
               </div>
-              {award.awardData.personName && (
+              {award.personName && (
                 <p className="text-sm text-muted-foreground">
-                  {award.awardData.personName}
+                  {award.personName}
                 </p>
               )}
             </div>
@@ -538,7 +485,7 @@ function ScoutingNotesTab({ teamNumber }: { teamNumber: number }) {
   );
 }
 
-function StatsTab({ team }: { team: TeamCoreFragment }) {
+function StatsTab({ team }: { team: FtcTeamSummary }) {
   const stats = team.quickStats;
 
   if (!stats) {
@@ -653,47 +600,12 @@ function StatsTab({ team }: { team: TeamCoreFragment }) {
 function ScoutingTeamPage() {
   const params = Route.useParams();
   const teamNumber = parseInt(params.number);
-
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [autoSyncAttempted, setAutoSyncAttempted] = useState(false);
-
-  // Fetch team data from Convex
-  const teamData = useQuery(api.integrations.ftcScout.getTeamByNumber, {
-    teamNumber,
-  });
-
-  // Sync action
-  const syncTeamData = useAction(api.integrations.ftcScoutActions.syncFtcScoutData);
-
-  const handleSync = useCallback(async () => {
-    setIsSyncing(true);
-    setSyncError(null);
-    try {
-      const result = await syncTeamData({ teamNumber });
-      if (!result.success) {
-        setSyncError(result.message);
-      }
-    } catch (error) {
-      setSyncError(error instanceof Error ? error.message : "Sync failed");
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [syncTeamData, teamNumber]);
-
-  // Auto-sync when team not found OR when team exists but data is null (needs sync)
-  useEffect(() => {
-    // Case 1: Team doesn't exist at all - auto sync to fetch
-    if (teamData === null && !autoSyncAttempted && !isSyncing) {
-      setAutoSyncAttempted(true);
-      handleSync();
-    }
-    // Case 2: Team exists but data is null - auto sync to populate data
-    if (teamData && teamData.needsSync && !autoSyncAttempted && !isSyncing) {
-      setAutoSyncAttempted(true);
-      handleSync();
-    }
-  }, [teamData, autoSyncAttempted, isSyncing, handleSync]);
+  const {
+    data: teamData,
+    error: teamError,
+    isLoading,
+    refetch,
+  } = useFtcScoutTeamPage(teamNumber);
 
   // Invalid team number
   if (isNaN(teamNumber) || teamNumber <= 0) {
@@ -715,7 +627,7 @@ function ScoutingTeamPage() {
   }
 
   // Loading state
-  if (teamData === undefined || (teamData === null && !autoSyncAttempted)) {
+  if (isLoading && !teamData) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -735,27 +647,13 @@ function ScoutingTeamPage() {
     );
   }
 
-  // Syncing state
-  if (isSyncing) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <RefreshCw className="h-12 w-12 animate-spin text-primary mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Syncing Team Data</h2>
-        <p className="text-muted-foreground">
-          Fetching team {teamNumber} from FTC Scout...
-        </p>
-      </div>
-    );
-  }
-
-  // Not found state (after sync attempt)
-  if (teamData === null) {
+  if (!teamData) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
         <h2 className="text-xl font-semibold mb-2">Team Not Found</h2>
         <p className="text-muted-foreground mb-4 text-center max-w-md">
-          {syncError ||
+          {teamError ||
             `Team ${teamNumber} could not be found. Please check the team number and try again.`}
         </p>
         <div className="flex gap-2">
@@ -765,7 +663,7 @@ function ScoutingTeamPage() {
               Back to Scouting
             </Link>
           </Button>
-          <Button onClick={handleSync}>
+          <Button onClick={refetch}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
           </Button>
@@ -774,48 +672,16 @@ function ScoutingTeamPage() {
     );
   }
 
-  // Team exists but data needs sync - show loading state
-  // This handles both before and during auto-sync
-  if (teamData.needsSync) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
-
-  // Parse the team data
-  const teamCoreData = teamData.data as TeamCoreFragment;
-  // Use name from the direct field if available, otherwise from the data object
-  const team: TeamCoreFragment = {
-    ...teamCoreData,
-    name: teamData.name || teamCoreData.name,
-  };
-  const events = teamData.events.map((e) => ({
-    id: e.id,
-    eventCode: e.eventCode,
-    eventData: e.eventData as EventCoreFragment,
-    startDate: e.startDate,
+  const team = teamData;
+  const events = team.events.map((event) => ({
+    eventCode: event.event.code,
+    eventData: event.event,
   }));
-  const awards = teamData.awards.map((a) => ({
-    awardData: a.awardData as AwardFields,
-  }));
+  const awards = team.events.flatMap((event) => event.awards);
 
   return (
     <div className="space-y-6">
-      <TeamHeader team={team} onRefresh={handleSync} isRefreshing={isSyncing} />
+      <TeamHeader team={team} onRefresh={refetch} isRefreshing={isLoading} />
 
       <Tabs defaultValue="scouting" className="w-full">
         <TabsList>

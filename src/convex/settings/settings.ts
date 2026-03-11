@@ -1,6 +1,7 @@
 import { internalQuery, query, mutation, QueryCtx, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
+import { internal } from "../_generated/api";
 
 /**
  * Helper function to get current user via clerkInfo
@@ -225,6 +226,11 @@ export const setFtcTeamNumber = mutation({
 
     const settings = await getOrCreateSettings(ctx);
     await ctx.db.patch(settings._id, { ftcTeamNumber: args.teamNumber });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.integrations.ftcCalendarSync.syncConfiguredTeamCalendar,
+      {},
+    );
 
     return null;
   },
@@ -259,9 +265,58 @@ export const setFtcTeamSettings = mutation({
 
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(settings._id, updates);
+      await ctx.scheduler.runAfter(
+        0,
+        internal.integrations.ftcCalendarSync.syncConfiguredTeamCalendar,
+        {},
+      );
     }
 
     return null;
+  },
+});
+
+export const requestFtcCalendarSync = mutation({
+  args: {},
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+  }),
+  handler: async (ctx) => {
+    const userId = await getCurrentUser(ctx);
+    if (!userId) {
+      return {
+        success: false,
+        message: "Not authenticated. Please sign in.",
+      };
+    }
+
+    const isAuthorized = await isOwnerOrAdmin(ctx, userId);
+    if (!isAuthorized) {
+      return {
+        success: false,
+        message: "Not authorized - owner or admin required.",
+      };
+    }
+
+    const settings = await ctx.db.query("settings").first();
+    if (!settings?.ftcTeamNumber) {
+      return {
+        success: false,
+        message: "Configure an FTC team number before syncing the calendar.",
+      };
+    }
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.integrations.ftcCalendarSync.syncConfiguredTeamCalendar,
+      {},
+    );
+
+    return {
+      success: true,
+      message: `Queued a calendar sync for FTC team ${settings.ftcTeamNumber}.`,
+    };
   },
 });
 
@@ -302,6 +357,11 @@ export const initializeFtcTeam = mutation({
     await ctx.db.patch(settings._id, {
       ftcTeamNumber: args.teamNumber,
     });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.integrations.ftcCalendarSync.syncConfiguredTeamCalendar,
+      {},
+    );
 
     return {
       success: true,

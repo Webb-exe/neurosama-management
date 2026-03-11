@@ -18,34 +18,12 @@ import {
 } from "lucide-react";
 import { useTimezone } from "@/context/TimezoneContext";
 import { useState } from "react";
+import { useFtcScoutConfiguredTeamEvents } from "@/lib/ftcScout/hooks";
+import type { FtcConfiguredTeamEvent } from "@/lib/ftcScout/queries";
 
 export const Route = createFileRoute("/_dashboard/scouting/")({
   component: ScoutingPage,
 });
-
-// ==========================================
-// TYPE DEFINITIONS
-// ==========================================
-
-type LocationFields = {
-  venue: string | null;
-  city: string;
-  state: string;
-  country: string;
-};
-
-type EventCoreFragment = {
-  season: number;
-  code: string;
-  name: string;
-  type: string;
-  location: LocationFields;
-  start: string;
-  end: string;
-  finished: boolean;
-  ongoing: boolean;
-  started: boolean;
-};
 
 // ==========================================
 // COMPONENTS
@@ -55,7 +33,7 @@ function EventSearchCard({
   event,
   eventCode,
 }: {
-  event: EventCoreFragment;
+  event: FtcConfiguredTeamEvent;
   eventCode: string;
 }) {
   const { formatDate } = useTimezone();
@@ -124,11 +102,9 @@ function EventSearchCard({
 
 function ScoutedTeamCard({
   teamCode,
-  teamName,
   commentCount,
 }: {
   teamCode: string;
-  teamName?: string;
   commentCount: number;
 }) {
   const navigate = useNavigate();
@@ -153,11 +129,6 @@ function ScoutedTeamCard({
             </div>
             <div>
               <h3 className="font-semibold">Team {teamCode}</h3>
-              {teamName && (
-                <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                  {teamName}
-                </p>
-              )}
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <MessageSquare className="h-3 w-3" />
                 {commentCount} note{commentCount !== 1 ? "s" : ""}
@@ -179,14 +150,19 @@ function ScoutingPage() {
   const [eventSearch, setEventSearch] = useState("");
   const [teamSearch, setTeamSearch] = useState("");
   const navigate = useNavigate();
+  const ftcSettings = useQuery(api.settings.settings.getFtcSettings, {});
 
-  // Fetch current team's events for quick access
-  const teamEventsData = useQuery(
-    api.integrations.ftcScout.getCurrentTeamEvents,
-    {}
-  );
+  const { data: teamEventsData, isLoading: isEventsLoading } =
+    useFtcScoutConfiguredTeamEvents(
+      ftcSettings?.ftcTeamNumber ?? null,
+    );
 
-  // Fetch scouted teams
+  const showTeamEventsLoading =
+    ftcSettings === undefined || (isEventsLoading && !teamEventsData);
+
+  const noConfiguredTeam = ftcSettings?.ftcTeamNumber === null;
+  const teamEventsState = noConfiguredTeam ? null : teamEventsData;
+
   const scoutedTeams = useQuery(api.scouting.scouting.listScoutedTeams, {});
 
   const handleEventSearch = (e: React.FormEvent) => {
@@ -300,7 +276,7 @@ function ScoutingPage() {
 
         {/* Team Events Tab */}
         <TabsContent value="team-events" className="mt-4">
-          {teamEventsData === undefined ? (
+          {showTeamEventsLoading ? (
             <div className="grid gap-3 md:grid-cols-2">
               {[1, 2, 3, 4].map((i) => (
                 <Card key={i}>
@@ -312,7 +288,7 @@ function ScoutingPage() {
                 </Card>
               ))}
             </div>
-          ) : teamEventsData === null ? (
+          ) : noConfiguredTeam ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-8">
                 <Trophy className="h-10 w-10 text-muted-foreground/50 mb-3" />
@@ -322,22 +298,22 @@ function ScoutingPage() {
                 </p>
               </CardContent>
             </Card>
-          ) : teamEventsData.events.length === 0 ? (
+          ) : !teamEventsState || teamEventsState.events.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-8">
                 <Trophy className="h-10 w-10 text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground text-center">
-                  No events synced yet. Sync your team data to see events.
+                  No team events were found in FTC Scout.
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {teamEventsData.events.map((eventData) => (
+              {teamEventsState.events.map((eventData) => (
                 <EventSearchCard
-                  key={eventData.id}
-                  event={eventData.data as EventCoreFragment}
-                  eventCode={eventData.eventCode}
+                  key={eventData.event.code}
+                  event={eventData.event}
+                  eventCode={eventData.event.code}
                 />
               ))}
             </div>
@@ -373,7 +349,6 @@ function ScoutingPage() {
                 <ScoutedTeamCard
                   key={team.id}
                   teamCode={team.teamCode}
-                  teamName={team.teamName}
                   commentCount={team.commentCount}
                 />
               ))}

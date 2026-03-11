@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { ClerkProvider } from "@clerk/clerk-react";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
+import ReactQueryProvider from "@/components/ReactQueryProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { TimezoneProvider } from "@/context/TimezoneContext";
 import appCss from "./globals.css?url";
@@ -59,13 +60,15 @@ function RootLayout() {
       </head>
       <body className="antialiased bg-background text-foreground">
         <ClerkProvider publishableKey={clerkPubKey!}>
-          <ConvexClientProvider>
-            <TimezoneProvider>
-              <AuthProvider>
-                <Outlet />
-              </AuthProvider>
-            </TimezoneProvider>
-          </ConvexClientProvider>
+          <ReactQueryProvider>
+            <ConvexClientProvider>
+              <TimezoneProvider>
+                <AuthProvider>
+                  <Outlet />
+                </AuthProvider>
+              </TimezoneProvider>
+            </ConvexClientProvider>
+          </ReactQueryProvider>
         </ClerkProvider>
         <Scripts />
       </body>

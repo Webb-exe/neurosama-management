@@ -1,6 +1,5 @@
 import { defineEnt, defineEntSchema, getEntDefinitions } from "convex-ents";
 import { v } from "convex/values";
-import { defineSchema } from "convex/server";
 
 const schema = defineEntSchema({
   // ========================================
@@ -39,8 +38,7 @@ const schema = defineEntSchema({
   // App settings - each setting is a typed boolean field
   settings: defineEnt({
     waitlistEnabled: v.boolean(),
-    // FTC Scout integration settings
-    ftcTeamNumber: v.optional(v.number()), // The team number to fetch data for
+    ftcTeamNumber: v.optional(v.number()),
   }),
 
   // Clerk invites tracking - for revocation
@@ -53,115 +51,14 @@ const schema = defineEntSchema({
     .index("by_clerkInviteId", ["clerkInviteId"])
     .edge("invitedByUser", { to: "users", field: "invitedBy", optional: true }),
 
-  // ========================================
-  // FTC SCOUT DATA
-  // ========================================
-  // Data is stored from GraphQL fragments defined in src/graphql/ftcScout.graphql
-  // Fragment types are generated in src/gql/graphql.ts
-  //
-  // Data field mapping:
-  // - teamInfo.data         → TeamStatsFragmentFragment
-  // - officialEvents.data   → EventCoreFragmentFragment (stripped of nested matches/awards)
-  // - officialMatches.data  → MatchCoreFragmentFragment (includes teams participation)
-  // - officialAwards.data   → AwardFieldsFragment
-  // - teamMatches.data      → TeamMatchParticipationCoreFragment (this team's participation only)
-
-  teamInfo: defineEnt({
-    teamNumber: v.number(),
-    name: v.optional(v.string()), // Team name - can be set even for placeholder teams
-    data: v.optional(v.any()), // TeamStatsFragmentFragment - null means not yet fetched
-  })
-    .index("by_teamNumber", ["teamNumber"])
-    .edges("teamEvents", { ref: "teamInfoId" })
-    .edges("teamMatches", { ref: "teamInfoId" })
-    .edges("teamAwards", { ref: "teamInfoId" })
-    .edges("teamScouting", { ref: "teamInfoId" }),
-
-  officialEvents: defineEnt({
-    eventCode: v.string(),
-    season: v.number(),
-    data: v.any(), // EventCoreFragmentFragment (stripped of nested matches/awards)
-    startDate: v.number(),
-    endDate: v.number(),
-  })
-    .index("by_eventCode", ["eventCode"])
-    .index("by_startDate", ["startDate"])
-    .index("by_season", ["season"])
-    .index("by_season_and_eventCode", ["season", "eventCode"])
-    .edges("officialMatches", { ref: "eventId" })
-    .edges("officialAwards", { ref: "eventId" })
-    .edges("teamEvents", { ref: "eventId" })
-    .edge("calenderFirstEvent", { to: "calenderFirstEvents", ref: "eventId" }),
-
-  officialMatches: defineEnt({
-    eventId: v.id("officialEvents"),
-    matchId: v.number(), // The match ID from FTC Scout API
-    teamNumbers: v.array(v.number()),
-    data: v.any(), // MatchCoreFragmentFragment (includes teams participation)
-    startDate: v.optional(v.number()),
-  })
-    .index("by_eventId_and_matchId", ["eventId", "matchId"])
-    .index("by_startDate", ["startDate"])
-    .edge("event", { to: "officialEvents", field: "eventId" })
-    .edges("teamMatches", { ref: "matchId" }),
-
-  officialAwards: defineEnt({
-    eventId: v.id("officialEvents"),
-    awardType: v.string(),
-    placement: v.number(),
-    teamNumber: v.optional(v.number()),
-    data: v.any(), // AwardFieldsFragment
-  })
-    .index("by_teamNumber", ["teamNumber"])
-    .index("by_eventId_and_awardType", ["eventId", "awardType"])
-    .index("by_eventId_and_awardType_and_placement", [
-      "eventId",
-      "awardType",
-      "placement",
-    ])
-    .edge("event", { to: "officialEvents", field: "eventId" })
-    .edges("teamAwards", { ref: "awardId" }),
-
-  // Junction tables for team-specific relationships
-  teamEvents: defineEnt({
-    teamInfoId: v.id("teamInfo"),
-    eventId: v.id("officialEvents"),
-    startDate: v.number(),
-  })
-    .index("by_startDate", ["startDate"])
-    .index("by_teamInfoId_and_eventId", ["teamInfoId", "eventId"])
-    .edge("teamInfo", { to: "teamInfo", field: "teamInfoId" })
-    .edge("event", { to: "officialEvents", field: "eventId" })
-    .edges("teamMatches", { ref: "teamEventId" })
-    .edges("teamAwards", { ref: "teamEventId" }),
-
-  // Junction table linking team to matches they participated in
-  teamMatches: defineEnt({
-    teamInfoId: v.id("teamInfo"),
-    teamEventId: v.id("teamEvents"),
-    matchId: v.id("officialMatches"),
-    startDate: v.optional(v.number()),
-    data: v.any(), // TeamMatchParticipationCoreFragment (this team's participation only)
-  })
-    .index("by_startDate", ["startDate"])
-    .index("by_teamInfoId_and_matchId", ["teamInfoId", "matchId"])
-    .edge("teamInfo", { to: "teamInfo", field: "teamInfoId" })
-    .edge("teamEvent", { to: "teamEvents", field: "teamEventId" })
-    .edge("match", { to: "officialMatches", field: "matchId" }),
-
-  teamAwards: defineEnt({
-    teamInfoId: v.id("teamInfo"),
-    teamEventId: v.id("teamEvents"),
-    awardId: v.id("officialAwards"),
-  })
-    .edge("teamInfo", { to: "teamInfo", field: "teamInfoId" })
-    .edge("teamEvent", { to: "teamEvents", field: "teamEventId" })
-    .edge("award", { to: "officialAwards", field: "awardId" }),
-
   calenderFirstEvents: defineEnt({
-    eventId: v.id("officialEvents"),
+    eventCode: v.string(),
+    teamNumber: v.number(),
+    season: v.number(),
+    locationLabel: v.string(),
   })
-    .edge("officialEvent", { to: "officialEvents", field: "eventId" })
+    .index("by_teamNumber", ["teamNumber"])
+    .index("by_season_and_eventCode", ["season", "eventCode"])
     .edge("calendarEvent", { to: "calendarEvents", ref: "firstEventId" }),
 
   calendarEvents: defineEnt({
@@ -177,11 +74,9 @@ const schema = defineEntSchema({
   teamScouting: defineEnt({
     teamCode: v.string(),
     createdAt: v.number(),
-    teamInfoId: v.optional(v.id("teamInfo")),
   })
     .index("by_teamCode", ["teamCode"])
-    .edges("teamComments", { ref: "teamScoutingId" })
-    .edge("teamInfo", { to: "teamInfo", field: "teamInfoId" }),
+    .edges("teamComments", { ref: "teamScoutingId" }),
 
   teamComments: defineEnt({
     teamScoutingId: v.id("teamScouting"),

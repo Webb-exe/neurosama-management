@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { usePaginatedQuery, useQuery, useMutation, useAction } from "convex/react";
+import { usePaginatedQuery, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -32,12 +32,11 @@ import {
   MoreVertical,
   Shield,
   UserMinus,
-  Plus,
   Settings,
   Users,
   UserCheck,
-  RefreshCw,
   Trophy,
+  RefreshCw,
 } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 
@@ -314,20 +313,23 @@ function SettingsTab() {
   const ftcSettings = useQuery(api.settings.settings.getFtcSetupStatus);
   const setWaitlistEnabled = useMutation(api.settings.settings.setWaitlistEnabled);
   const setFtcTeamSettings = useMutation(api.settings.settings.setFtcTeamSettings);
-  const syncFtcData = useAction(api.integrations.ftcScoutActions.syncCurrentTeamData);
+  const requestFtcCalendarSync = useMutation(
+    api.settings.settings.requestFtcCalendarSync,
+  );
 
   const [teamNumber, setTeamNumber] = useState("");
-  const [season, setSeason] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   // Initialize form when ftcSettings loads
   useEffect(() => {
     if (ftcSettings?.ftcTeamNumber) {
       setTeamNumber(ftcSettings.ftcTeamNumber.toString());
+      return;
     }
+    setTeamNumber("");
   }, [ftcSettings]);
 
   if (settings === undefined || ftcSettings === undefined) {
@@ -336,10 +338,10 @@ function SettingsTab() {
 
   const handleSaveFtcSettings = async () => {
     setIsSaving(true);
+    setSyncMessage(null);
     try {
-      const updates: { teamNumber?: number; season?: number } = {};
+      const updates: { teamNumber?: number } = {};
       if (teamNumber) updates.teamNumber = parseInt(teamNumber, 10);
-      if (season) updates.season = parseInt(season, 10);
       await setFtcTeamSettings(updates);
       setIsEditing(false);
     } catch (error) {
@@ -349,14 +351,16 @@ function SettingsTab() {
     }
   };
 
-  const handleSyncFtcData = async () => {
+  const handleManualSync = async () => {
     setIsSyncing(true);
     setSyncMessage(null);
+
     try {
-      const result = await syncFtcData({});
-      setSyncMessage({ type: result.success ? "success" : "error", text: result.message });
+      const result = await requestFtcCalendarSync({});
+      setSyncMessage(result.message);
     } catch (error) {
-      setSyncMessage({ type: "error", text: "Failed to sync data" });
+      console.error("Failed to queue FTC calendar sync:", error);
+      setSyncMessage("Failed to queue the FTC calendar sync.");
     } finally {
       setIsSyncing(false);
     }
@@ -372,36 +376,22 @@ function SettingsTab() {
             FTC Scout Integration
           </CardTitle>
           <CardDescription>
-            Configure your FTC team to enable data syncing from FTC Scout API.
+            Configure the shared FTC team number used by client-side FTC Scout pages.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {isEditing ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ftcTeamNumber">Team Number</Label>
-                  <Input
-                    id="ftcTeamNumber"
-                    type="number"
-                    placeholder="e.g., 12345"
-                    value={teamNumber}
-                    onChange={(e) => setTeamNumber(e.target.value)}
-                    min="1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ftcSeason">Season Year</Label>
-                  <Input
-                    id="ftcSeason"
-                    type="number"
-                    placeholder="e.g., 2024"
-                    value={season}
-                    onChange={(e) => setSeason(e.target.value)}
-                    min="2000"
-                    max="2099"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="ftcTeamNumber">Team Number</Label>
+                <Input
+                  id="ftcTeamNumber"
+                  type="number"
+                  placeholder="e.g., 12345"
+                  value={teamNumber}
+                  onChange={(e) => setTeamNumber(e.target.value)}
+                  min="1"
+                />
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleSaveFtcSettings} disabled={isSaving}>
@@ -427,17 +417,25 @@ function SettingsTab() {
                     {ftcSettings.isConfigured ? "Edit" : "Configure"}
                   </Button>
                   {ftcSettings.isConfigured && (
-                    <Button onClick={handleSyncFtcData} disabled={isSyncing}>
-                      <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                      {isSyncing ? "Syncing..." : "Sync Data"}
+                    <Button
+                      variant="outline"
+                      onClick={handleManualSync}
+                      disabled={isSyncing}
+                    >
+                      <RefreshCw
+                        className={`mr-2 h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+                      />
+                      {isSyncing ? "Syncing..." : "Sync Calendar"}
                     </Button>
                   )}
                 </div>
               </div>
+              <p className="text-sm text-muted-foreground">
+                Event pages fetch FTC Scout directly in the browser. Calendar team
+                events update in the background after changes.
+              </p>
               {syncMessage && (
-                <p className={`text-sm ${syncMessage.type === "success" ? "text-green-600" : "text-red-600"}`}>
-                  {syncMessage.text}
-                </p>
+                <p className="text-sm text-muted-foreground">{syncMessage}</p>
               )}
             </div>
           )}

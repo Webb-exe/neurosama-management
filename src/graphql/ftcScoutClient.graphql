@@ -1,0 +1,211 @@
+query GetConfiguredTeamEvents($number: Int!, $season: Int! = 2025) {
+  teamByNumber(number: $number) {
+    number
+    name
+    events(season: $season) {
+      event {
+        ...ClientEventListFields
+      }
+    }
+  }
+}
+
+query GetTeamPage($number: Int!, $season: Int! = 2025) {
+  teamByNumber(number: $number) {
+    ...ClientTeamFields
+    events(season: $season) {
+      awards {
+        ...ClientAwardFields
+      }
+      event {
+        ...ClientEventListFields
+      }
+    }
+  }
+}
+
+query GetEventPage($code: String!, $season: Int! = 2025) {
+  eventByCode(season: $season, code: $code) {
+    ...ClientEventDetailFields
+    matches {
+      ...ClientMatchFields
+    }
+    awards {
+      ...ClientAwardFields
+    }
+    teams {
+      teamNumber
+      team {
+        ...ClientTeamFields
+      }
+    }
+  }
+}
+
+fragment ClientLocationFields on Location {
+  venue
+  city
+  state
+  country
+}
+
+fragment ClientQuickStatFields on QuickStat {
+  value
+  rank
+}
+
+fragment ClientQuickStatsFields on QuickStats {
+  season
+  number
+  tot {
+    ...ClientQuickStatFields
+  }
+  auto {
+    ...ClientQuickStatFields
+  }
+  dc {
+    ...ClientQuickStatFields
+  }
+  eg {
+    ...ClientQuickStatFields
+  }
+  count
+}
+
+fragment ClientTeamFields on Team {
+  number
+  name
+  schoolName
+  rookieYear
+  website
+  location {
+    ...ClientLocationFields
+  }
+  quickStats(season: 2025) {
+    ...ClientQuickStatsFields
+  }
+}
+
+fragment ClientEventListFields on Event {
+  season
+  code
+  name
+  type
+  location {
+    ...ClientLocationFields
+  }
+  start
+  end
+  timezone
+  finished
+  ongoing
+  started
+}
+
+fragment ClientEventDetailFields on Event {
+  ...ClientEventListFields
+  address
+  regionCode
+  leagueCode
+  districtCode
+  divisionCode
+  remote
+  hybrid
+  fieldCount
+  published
+  hasMatches
+  website
+  liveStreamURL
+  webcasts
+  createdAt
+  updatedAt
+}
+
+fragment ClientAwardFields on Award {
+  teamNumber
+  type
+  personName
+  placement
+  divisionName
+}
+
+fragment ClientMatchTeamFields on TeamMatchParticipation {
+  season
+  eventCode
+  matchId
+  alliance
+  allianceRole
+  station
+  teamNumber
+  team {
+    number
+    name
+  }
+}
+
+fragment ClientMatchScoreAllianceFields on MatchScores2025Alliance {
+  alliance
+  autoLeavePoints
+  autoLeave1
+  autoLeave2
+  autoArtifactPoints
+  autoArtifactClassifiedPoints
+  autoArtifactOverflowPoints
+  autoPatternPoints
+  autoClassifierState
+  dcBasePoints
+  dcBase1
+  dcBase2
+  dcBaseBonus
+  dcArtifactPoints
+  dcArtifactClassifiedPoints
+  dcArtifactOverflowPoints
+  dcPatternPoints
+  dcDepotPoints
+  dcClassifierState
+  movementRp
+  goalRp
+  patternRp
+  autoPoints
+  dcPoints
+  minorsCommitted
+  majorsCommitted
+  minorsByOpp
+  majorsByOpp
+  penaltyPointsCommitted
+  penaltyPointsByOpp
+  totalPointsNp
+  totalPoints
+}
+
+fragment ClientMatchFields on Match {
+  season
+  eventCode
+  id
+  tournamentLevel
+  series
+  matchNum
+  description
+  hasBeenPlayed
+  scheduledStartTime
+  actualStartTime
+  postResultTime
+  createdAt
+  updatedAt
+  teams {
+    ...ClientMatchTeamFields
+  }
+  scores {
+    ... on MatchScores2025 {
+      season
+      eventCode
+      matchId
+      red {
+        ...ClientMatchScoreAllianceFields
+      }
+      blue {
+        ...ClientMatchScoreAllianceFields
+      }
+    }
+  }
+}

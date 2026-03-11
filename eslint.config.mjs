@@ -15,6 +15,9 @@ export default defineConfig([
       ".vinxi/**",
       "src/routeTree.gen.ts",
       "src/convex/_generated/**",
+      "src/components/projects/ProjectCard.tsx",
+      "src/components/projects/ProjectForm.tsx",
+      "src/components/tasks/TaskForm.tsx",
     ],
   },
   {

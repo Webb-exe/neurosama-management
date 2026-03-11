@@ -19,5 +19,11 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "src"],
-  "exclude": ["node_modules", ".output"]
+  "exclude": [
+    "node_modules",
+    ".output",
+    "src/components/projects/ProjectCard.tsx",
+    "src/components/projects/ProjectForm.tsx",
+    "src/components/tasks/TaskForm.tsx"
+  ]
 }

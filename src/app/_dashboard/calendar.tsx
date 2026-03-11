@@ -153,8 +153,11 @@ type CalendarEvent = {
   endDate: number;
   data:
     | {
-        type: "FirstEvent";
-        firstEvent: string;
+        type: "FtcTeamEvent";
+        eventCode: string;
+        locationLabel: string;
+        teamNumber: number;
+        season: number;
       };
 };
 
@@ -165,7 +168,7 @@ type CalendarEvent = {
 // Get color config based on event type
 function getEventColors(type: string) {
   switch (type) {
-    case "FirstEvent":
+    case "FtcTeamEvent":
       return {
         bg: "bg-orange-500",
         bgLight: "bg-orange-100 dark:bg-orange-900/30",
@@ -185,8 +188,8 @@ function getEventColors(type: string) {
 // Get event display name
 function getEventDisplayName(event: CalendarEvent) {
   switch (event.data.type) {
-    case "FirstEvent":
-      return event.data.firstEvent;
+    case "FtcTeamEvent":
+      return event.data.eventCode;
     default:
       return "Event";
   }
@@ -400,7 +403,7 @@ function DayViewEventBlock({
       }}
     >
       <div className="flex items-center gap-1">
-        {event.data.type === "FirstEvent" && (
+        {event.data.type === "FtcTeamEvent" && (
           <Trophy className="h-3 w-3 shrink-0" />
         )}
         <span className="font-medium truncate">

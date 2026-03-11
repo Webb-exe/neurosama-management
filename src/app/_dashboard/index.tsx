@@ -1,20 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import {
   Trophy,
-  CheckSquare,
-  ArrowRight,
   Settings,
-  RefreshCw,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_dashboard/")({
@@ -25,11 +19,9 @@ export const Route = createFileRoute("/_dashboard/")({
 function FtcSetupBanner() {
   const setupStatus = useQuery(api.settings.settings.getFtcSetupStatus);
   const initializeFtcTeam = useMutation(api.settings.settings.initializeFtcTeam);
-  const syncFtcData = useAction(api.integrations.ftcScoutActions.syncCurrentTeamData);
   
   const [teamNumber, setTeamNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   if (setupStatus === undefined) {
@@ -51,40 +43,17 @@ function FtcSetupBanner() {
     try {
       const result = await initializeFtcTeam({ teamNumber: num });
       if (result.success) {
-        setMessage({ type: "success", text: result.message });
-        // Auto-sync data after setup
-        setIsSyncing(true);
-        const syncResult = await syncFtcData();
-        if (syncResult.success) {
-          setMessage({ type: "success", text: syncResult.message });
-        } else {
-          setMessage({ type: "error", text: syncResult.message });
-        }
+        setMessage({
+          type: "success",
+          text: `${result.message} Team events will update on the calendar automatically.`,
+        });
       } else {
         setMessage({ type: "error", text: result.message });
       }
-      setIsSyncing(false);
       setIsSubmitting(false);
     } catch (error) {
       setMessage({ type: "error", text: `Failed to initialize team. Please try again. ${error}` });
-    }
-  };
-
-  // Handle manual sync
-  const handleSync = async () => {
-    setIsSyncing(true);
-    setMessage(null);
-    try {
-      const result = await syncFtcData();
-      if (result.success) {
-        setMessage({ type: "success", text: result.message });
-      } else {
-        setMessage({ type: "error", text: result.message });
-      }
-    } catch (error) {
-      setMessage({ type: "error", text: `Failed to sync data. Please try again. ${error}` });
-    } finally {
-      setIsSyncing(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -115,8 +84,8 @@ function FtcSetupBanner() {
                 required
               />
             </div>
-            <Button type="submit" disabled={isSubmitting || isSyncing}>
-              {isSubmitting ? "Setting up..." : isSyncing ? "Syncing data..." : "Configure Team"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Setting up..." : "Configure Team"}
             </Button>
           </form>
           {message && (
@@ -140,21 +109,10 @@ function FtcSetupBanner() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={handleSync}
-            disabled={isSyncing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-            {isSyncing ? "Syncing..." : "Sync FTC Scout Data"}
-          </Button>
-          {message && (
-            <p className={`text-xs ${message.type === "success" ? "text-green-600" : "text-red-600"}`}>
-              {message.text}
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground">
+            FTC Scout data now loads directly in the app. The calendar updates in
+            the background after team changes.
+          </p>
         </CardContent>
       </Card>
     );

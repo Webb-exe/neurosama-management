@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { useTimezone } from "@/context/TimezoneContext";
 import { useState, useMemo } from "react";
+import { useFtcScoutConfiguredTeamEvents } from "@/lib/ftcScout/hooks";
+import type { FtcConfiguredTeamEvent } from "@/lib/ftcScout/queries";
 
 export const Route = createFileRoute("/_dashboard/events/")({
   component: EventsPage,
@@ -66,69 +68,11 @@ function getDatePartsInTimezone(
 }
 
 // ==========================================
-// TYPE DEFINITIONS (mapped from GraphQL fragments)
-// ==========================================
-
-type LocationFields = {
-  venue: string | null;
-  city: string;
-  state: string;
-  country: string;
-};
-
-type EventType =
-  | "Championship"
-  | "DemoExhibition"
-  | "FIRSTChampionship"
-  | "InnovationChallenge"
-  | "Kickoff"
-  | "LeagueMeet"
-  | "LeagueTournament"
-  | "OffSeason"
-  | "Other"
-  | "PracticeDay"
-  | "Premier"
-  | "Qualifier"
-  | "Scrimmage"
-  | "SuperQualifier"
-  | "VolunteerSignup"
-  | "Workshop";
-
-type EventCoreFragment = {
-  season: number;
-  code: string;
-  name: string;
-  type: EventType;
-  address: string | null;
-  location: LocationFields;
-  regionCode: string | null;
-  leagueCode: string | null;
-  districtCode: string | null;
-  divisionCode: string | null;
-  start: string;
-  end: string;
-  timezone: string;
-  remote: boolean;
-  hybrid: boolean;
-  fieldCount: number;
-  published: boolean;
-  started: boolean;
-  ongoing: boolean;
-  finished: boolean;
-  hasMatches: boolean;
-  website: string | null;
-  liveStreamURL: string | null;
-  webcasts: string[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-// ==========================================
 // HELPER FUNCTIONS
 // ==========================================
 
-function getEventTypeLabel(type: EventType): string {
-  const labels: Record<EventType, string> = {
+function getEventTypeLabel(type: FtcConfiguredTeamEvent["type"]): string {
+  const labels: Record<FtcConfiguredTeamEvent["type"], string> = {
     Championship: "Championship",
     DemoExhibition: "Demo / Exhibition",
     FIRSTChampionship: "FIRST Championship",
@@ -150,7 +94,7 @@ function getEventTypeLabel(type: EventType): string {
 }
 
 function getEventTypeBadgeVariant(
-  type: EventType
+  type: FtcConfiguredTeamEvent["type"]
 ): "default" | "secondary" | "outline" | "destructive" {
   switch (type) {
     case "FIRSTChampionship":
@@ -167,18 +111,26 @@ function getEventTypeBadgeVariant(
   }
 }
 
-function formatLocation(location: LocationFields): string {
+function formatLocation(location: FtcConfiguredTeamEvent["location"]): string {
   const parts = [location.city, location.state, location.country].filter(
     Boolean
   );
   return parts.join(", ");
 }
 
+function getEventStartTimestamp(event: FtcConfiguredTeamEvent): number {
+  return Date.parse(`${event.start}T00:00:00`);
+}
+
+function getEventEndTimestamp(event: FtcConfiguredTeamEvent): number {
+  return Date.parse(`${event.end}T23:59:59`);
+}
+
 // ==========================================
 // COMPONENTS
 // ==========================================
 
-function EventStatusBadge({ event }: { event: EventCoreFragment }) {
+function EventStatusBadge({ event }: { event: FtcConfiguredTeamEvent }) {
   if (event.finished) {
     return (
       <Badge variant="secondary" className="gap-1">
@@ -217,7 +169,7 @@ function EventCard({
   startTimestamp,
   endTimestamp,
 }: {
-  event: EventCoreFragment;
+  event: FtcConfiguredTeamEvent;
   eventCode: string;
   startTimestamp: number;
   endTimestamp: number;
@@ -303,41 +255,38 @@ function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [seasonFilter, setSeasonFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const ftcSettings = useQuery(api.settings.settings.getFtcSettings, {});
+  const { data: teamEventsData, isLoading: isEventsLoading } =
+    useFtcScoutConfiguredTeamEvents(ftcSettings?.ftcTeamNumber ?? null);
 
-  // Fetch current team's events
-  const teamEventsData = useQuery(api.integrations.ftcScout.getCurrentTeamEvents, {});
-
-  // Get unique seasons for filter
   const seasons = useMemo(() => {
     if (!teamEventsData?.events) return [];
-    const uniqueSeasons = [...new Set(teamEventsData.events.map((e) => e.season))];
+    const uniqueSeasons = [
+      ...new Set(teamEventsData.events.map((entry) => entry.event.season)),
+    ];
     return uniqueSeasons.sort((a, b) => b - a);
   }, [teamEventsData]);
 
-  // Filter events
   const filteredEvents = useMemo(() => {
     if (!teamEventsData?.events) return [];
 
-    return teamEventsData.events.filter((eventData) => {
-      const event = eventData.data as EventCoreFragment;
-
-      // Search filter
+    return teamEventsData.events
+      .map((entry) => entry.event)
+      .filter((event) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesSearch =
           event.name.toLowerCase().includes(query) ||
-          eventData.eventCode.toLowerCase().includes(query) ||
+          event.code.toLowerCase().includes(query) ||
           event.location.city.toLowerCase().includes(query) ||
           event.location.state.toLowerCase().includes(query);
         if (!matchesSearch) return false;
       }
 
-      // Season filter
-      if (seasonFilter !== "all" && eventData.season !== parseInt(seasonFilter)) {
+      if (seasonFilter !== "all" && event.season !== parseInt(seasonFilter)) {
         return false;
       }
 
-      // Status filter
       if (statusFilter !== "all") {
         if (statusFilter === "upcoming" && (event.started || event.finished))
           return false;
@@ -346,16 +295,17 @@ function EventsPage() {
       }
 
       return true;
-    });
+      });
   }, [teamEventsData, searchQuery, seasonFilter, statusFilter]);
 
-  // Sort events by start date (most recent first)
   const sortedEvents = useMemo(() => {
-    return [...filteredEvents].sort((a, b) => b.startDate - a.startDate);
+    return [...filteredEvents].sort(
+      (a, b) => getEventStartTimestamp(b) - getEventStartTimestamp(a),
+    );
   }, [filteredEvents]);
+  const teamEvents = teamEventsData?.events ?? [];
 
-  // No team configured state
-  if (teamEventsData === null) {
+  if (ftcSettings && ftcSettings.ftcTeamNumber === null) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -385,6 +335,8 @@ function EventsPage() {
     );
   }
 
+  const isLoading = ftcSettings === undefined || (isEventsLoading && !teamEventsData);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -397,8 +349,8 @@ function EventsPage() {
           <p className="text-muted-foreground">
             {teamEventsData ? (
               <>
-                Events for Team {teamEventsData.teamNumber}
-                {teamEventsData.teamName && ` - ${teamEventsData.teamName}`}
+                Events for Team {teamEventsData.number}
+                {teamEventsData.name && ` - ${teamEventsData.name}`}
               </>
             ) : (
               "View your team's FTC events and competitions"
@@ -454,7 +406,7 @@ function EventsPage() {
       </Card>
 
       {/* Events Grid */}
-      {teamEventsData === undefined ? (
+      {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i}>
@@ -477,8 +429,8 @@ function EventsPage() {
             <Trophy className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h2 className="text-lg font-semibold mb-2">No events found</h2>
             <p className="text-muted-foreground text-center max-w-md">
-              {teamEventsData.events.length === 0
-                ? "No events have been synced yet. Events will appear here once your team data is synced from FTC Scout."
+              {teamEvents.length === 0
+                ? "No events were found for the configured team in FTC Scout."
                 : "No events match your current filters. Try adjusting your search or filters."}
             </p>
           </CardContent>
@@ -490,13 +442,13 @@ function EventsPage() {
             {sortedEvents.length !== 1 ? "s" : ""}
           </p>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sortedEvents.map((eventData) => (
+            {sortedEvents.map((event) => (
               <EventCard
-                key={eventData.id}
-                event={eventData.data as EventCoreFragment}
-                eventCode={eventData.eventCode}
-                startTimestamp={eventData.startDate}
-                endTimestamp={eventData.endDate}
+                key={event.code}
+                event={event}
+                eventCode={event.code}
+                startTimestamp={getEventStartTimestamp(event)}
+                endTimestamp={getEventEndTimestamp(event)}
               />
             ))}
           </div>

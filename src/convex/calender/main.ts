@@ -10,8 +10,11 @@ export const getEvents = query({
       endDate: v.number(),
       data: v.union(
         v.object({
-          type: v.literal("FirstEvent"),
-          firstEvent: v.string(),
+          type: v.literal("FtcTeamEvent"),
+          eventCode: v.string(),
+          locationLabel: v.string(),
+          teamNumber: v.number(),
+          season: v.number(),
         }),
       ),
     }),
@@ -33,17 +36,16 @@ export const getEvents = query({
           if (!firstEvent) {
             return null;
           }
-          const officialEvent = await firstEvent.edge("officialEvent");
-          if (!officialEvent) {
-            return null;
-          }
           return {
             id: event._id,
             startDate: event.startDate,
             endDate: event.endDate,
             data: {
-              type: "FirstEvent" as const,
-              firstEvent: officialEvent.eventCode,
+              type: "FtcTeamEvent" as const,
+              eventCode: firstEvent.eventCode,
+              locationLabel: firstEvent.locationLabel,
+              teamNumber: firstEvent.teamNumber,
+              season: firstEvent.season,
             },
           };
         }

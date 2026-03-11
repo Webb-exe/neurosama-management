@@ -1,6 +1,4 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +39,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimezone } from "@/context/TimezoneContext";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
+import {
+  AwardType as FtcScoutAwardType,
+  TournamentLevel as FtcScoutTournamentLevel,
+} from "@/gql/graphql";
+import { useFtcScoutEventPage } from "@/lib/ftcScout/hooks";
+import type {
+  FtcAward,
+  FtcEventDetail,
+  FtcEventTeamParticipation,
+  FtcMatch,
+} from "@/lib/ftcScout/queries";
 
 export const Route = createFileRoute("/_dashboard/events/$code")({
   component: EventDetailPage,
@@ -112,142 +121,9 @@ function parseDateStringToTimestamp(dateString: string, eventTimezone: string): 
   return adjustedDate.getTime() - (hour * 60 + minute) * 60 * 1000;
 }
 
-// ==========================================
-// TYPE DEFINITIONS (mapped from GraphQL fragments)
-// ==========================================
-
-type LocationFields = {
-  venue: string | null;
-  city: string;
-  state: string;
-  country: string;
-};
-
-type EventCoreFragment = {
-  season: number;
-  code: string;
-  name: string;
-  type: EventType;
-  address: string | null;
-  location: LocationFields;
-  regionCode: string | null;
-  leagueCode: string | null;
-  districtCode: string | null;
-  divisionCode: string | null;
-  start: string;
-  end: string;
-  timezone: string;
-  remote: boolean;
-  hybrid: boolean;
-  fieldCount: number;
-  published: boolean;
-  started: boolean;
-  ongoing: boolean;
-  finished: boolean;
-  hasMatches: boolean;
-  website: string | null;
-  liveStreamURL: string | null;
-  webcasts: string[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-type TeamMatchParticipationCore = {
-  season: number;
-  eventCode: string;
-  matchId: number;
-  alliance: Alliance;
-  allianceRole: AllianceRole;
-  station: Station;
-  teamNumber: number;
-};
-
-type MatchScores2025Alliance = {
-  alliance: Alliance;
-  totalPoints: number;
-  totalPointsNp: number;
-  autoPoints: number;
-  dcPoints: number;
-  penaltyPointsByOpp: number;
-};
-
-type MatchCoreFragment = {
-  season: number;
-  eventCode: string;
-  id: number;
-  tournamentLevel: TournamentLevel;
-  series: number;
-  matchNum: number;
-  description: string;
-  hasBeenPlayed: boolean;
-  scheduledStartTime: string | null;
-  actualStartTime: string | null;
-  postResultTime: string | null;
-  createdAt: string;
-  updatedAt: string;
-  teams: TeamMatchParticipationCore[];
-  scores: {
-    season: number;
-    eventCode: string;
-    matchId: number;
-    red: MatchScores2025Alliance;
-    blue: MatchScores2025Alliance;
-  } | null;
-};
-
-type AwardFields = {
-  teamNumber: number;
-  type: AwardType;
-  personName: string | null;
-  placement: number;
-  divisionName: string | null;
-};
-
-type EventType =
-  | "Championship"
-  | "DemoExhibition"
-  | "FIRSTChampionship"
-  | "InnovationChallenge"
-  | "Kickoff"
-  | "LeagueMeet"
-  | "LeagueTournament"
-  | "OffSeason"
-  | "Other"
-  | "PracticeDay"
-  | "Premier"
-  | "Qualifier"
-  | "Scrimmage"
-  | "SuperQualifier"
-  | "VolunteerSignup"
-  | "Workshop";
-
-type TournamentLevel = "DoubleElim" | "Finals" | "Quals" | "Semis";
-type Alliance = "Blue" | "Red" | "Solo";
-type AllianceRole = "Captain" | "FirstPick" | "SecondPick" | "Solo";
-type Station = "NotOnField" | "One" | "Solo" | "Two";
-
-type AwardType =
-  | "Compass"
-  | "ConferenceFinalist"
-  | "Connect"
-  | "Control"
-  | "DeansListFinalist"
-  | "DeansListSemiFinalist"
-  | "DeansListWinner"
-  | "Design"
-  | "DivisionFinalist"
-  | "DivisionWinner"
-  | "Finalist"
-  | "Innovate"
-  | "Inspire"
-  | "JudgesChoice"
-  | "Motivate"
-  | "Promote"
-  | "Reach"
-  | "Sustain"
-  | "Think"
-  | "TopRanked"
-  | "Winner";
+type EventType = FtcEventDetail["type"];
+type TournamentLevel = FtcMatch["tournamentLevel"];
+type AwardType = FtcAward["type"];
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -330,7 +206,7 @@ function getTournamentLevelLabel(level: TournamentLevel): string {
   return labels[level] || level;
 }
 
-function formatLocation(location: LocationFields): string {
+function formatLocation(location: FtcEventDetail["location"]): string {
   const parts = [location.city, location.state, location.country].filter(
     Boolean
   );
@@ -341,7 +217,7 @@ function formatLocation(location: LocationFields): string {
 // COMPONENTS
 // ==========================================
 
-function EventStatusBadge({ event }: { event: EventCoreFragment }) {
+function EventStatusBadge({ event }: { event: FtcEventDetail }) {
   if (event.finished) {
     return (
       <Badge variant="secondary" className="gap-1">
@@ -374,7 +250,7 @@ function EventStatusBadge({ event }: { event: EventCoreFragment }) {
   );
 }
 
-function EventHeader({ event }: { event: EventCoreFragment }) {
+function EventHeader({ event }: { event: FtcEventDetail }) {
   const { formatDate, timezone } = useTimezone();
 
   // Convert string dates to timestamps using the event's timezone
@@ -531,7 +407,7 @@ function MatchRow({
   match,
   onTeamClick,
 }: {
-  match: MatchCoreFragment;
+  match: FtcMatch;
   onTeamClick: (teamNumber: number) => void;
 }) {
   const { formatDate } = useTimezone();
@@ -660,7 +536,7 @@ function MatchesTab({
   matches,
   onTeamClick,
 }: {
-  matches: MatchCoreFragment[];
+  matches: FtcMatch[];
   onTeamClick: (teamNumber: number) => void;
 }) {
   const groupedMatches = matches.reduce(
@@ -670,7 +546,7 @@ function MatchesTab({
       acc[level].push(match);
       return acc;
     },
-    {} as Record<TournamentLevel, MatchCoreFragment[]>
+    {} as Record<TournamentLevel, FtcMatch[]>
   );
 
   Object.values(groupedMatches).forEach((group) => {
@@ -681,10 +557,10 @@ function MatchesTab({
   });
 
   const levelOrder: TournamentLevel[] = [
-    "Quals",
-    "Semis",
-    "DoubleElim",
-    "Finals",
+    FtcScoutTournamentLevel.Quals,
+    FtcScoutTournamentLevel.Semis,
+    FtcScoutTournamentLevel.DoubleElim,
+    FtcScoutTournamentLevel.Finals,
   ];
 
   if (matches.length === 0) {
@@ -741,34 +617,6 @@ function MatchesTab({
   );
 }
 
-type QuickStatFields = {
-  value: number;
-  rank: number;
-};
-
-type QuickStatsFields = {
-  season: number;
-  number: number;
-  tot: QuickStatFields;
-  auto: QuickStatFields;
-  dc: QuickStatFields;
-  eg: QuickStatFields;
-  count: number;
-};
-
-type TeamEventData = {
-  teamNumber: number;
-  teamName?: string; // Team name - can be set even for placeholder teams
-  teamInfoId: string | null; // null if team not in teamEvents yet
-  teamData?: {
-    number: number;
-    name: string;
-    schoolName: string | null;
-    location: LocationFields;
-    quickStats: QuickStatsFields | null;
-  };
-};
-
 type TeamsViewMode = "all" | "opr";
 type SortMetric = "tot" | "auto" | "dc" | "eg";
 
@@ -776,14 +624,10 @@ function TeamsTab({
   teams,
   matches,
   onTeamClick,
-  onSyncAllTeams,
-  isSyncingTeams,
 }: {
-  teams: TeamEventData[];
-  matches: MatchCoreFragment[];
+  teams: FtcEventTeamParticipation[];
+  matches: FtcMatch[];
   onTeamClick: (teamNumber: number) => void;
-  onSyncAllTeams: () => void;
-  isSyncingTeams: boolean;
 }) {
   const [viewMode, setViewMode] = useState<TeamsViewMode>("all");
   const [sortMetric, setSortMetric] = useState<SortMetric>("tot");
@@ -832,30 +676,16 @@ function TeamsTab({
     return map;
   }, [matches]);
 
-  // Separate synced and unsynced teams
-  const { syncedTeams, unsyncedTeams } = useMemo(() => {
-    const synced: TeamEventData[] = [];
-    const unsynced: TeamEventData[] = [];
-    teams.forEach((team) => {
-      if (team.teamData) {
-        synced.push(team);
-      } else {
-        unsynced.push(team);
-      }
-    });
-    return { syncedTeams: synced, unsyncedTeams: unsynced };
-  }, [teams]);
-
-  // Teams sorted by selected metric (only synced teams with quickStats)
+  // Teams sorted by selected metric
   const teamsByOpr = useMemo(() => {
-    return [...syncedTeams]
-      .filter((t) => t.teamData?.quickStats?.tot?.value !== undefined)
+    return [...teams]
+      .filter((team) => team.team.quickStats?.tot?.value !== undefined)
       .sort((a, b) => {
-        const aValue = a.teamData?.quickStats?.[sortMetric]?.value ?? 0;
-        const bValue = b.teamData?.quickStats?.[sortMetric]?.value ?? 0;
+        const aValue = a.team.quickStats?.[sortMetric]?.value ?? 0;
+        const bValue = b.team.quickStats?.[sortMetric]?.value ?? 0;
         return bValue - aValue; // Descending order
       });
-  }, [syncedTeams, sortMetric]);
+  }, [teams, sortMetric]);
 
   if (teams.length === 0) {
     return (
@@ -890,21 +720,6 @@ function TeamsTab({
             OPR Ranking ({teamsByOpr.length})
           </Button>
         </div>
-        {unsyncedTeams.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSyncAllTeams}
-            disabled={isSyncingTeams}
-          >
-            <RefreshCw
-              className={cn("h-4 w-4 mr-2", isSyncingTeams && "animate-spin")}
-            />
-            {isSyncingTeams
-              ? "Syncing..."
-              : `Sync ${unsyncedTeams.length} Unsynced Teams`}
-          </Button>
-        )}
       </div>
 
       {/* All Teams View */}
@@ -916,14 +731,10 @@ function TeamsTab({
               wins: 0,
               losses: 0,
             };
-            const isSynced = !!team.teamData;
             return (
               <Card
                 key={team.teamNumber}
-                className={cn(
-                  "hover:shadow-md transition-shadow cursor-pointer",
-                  !isSynced && "border-dashed"
-                )}
+                className="hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => onTeamClick(team.teamNumber)}
               >
                 <CardContent className="p-4">
@@ -931,15 +742,10 @@ function TeamsTab({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">Team {team.teamNumber}</h3>
-                        {!isSynced && (
-                          <Badge variant="outline" className="text-xs">
-                            Unsynced
-                          </Badge>
-                        )}
                       </div>
-                      {(team.teamName || team.teamData?.name) && (
+                      {team.team.name && (
                         <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                          {team.teamName || team.teamData?.name}
+                          {team.team.name}
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground">
@@ -1008,7 +814,6 @@ function TeamsTab({
                       wins: 0,
                       losses: 0,
                     };
-                    const qs = team.teamData?.quickStats;
                     return (
                       <TableRow
                         key={team.teamNumber}
@@ -1023,24 +828,24 @@ function TeamsTab({
                             <span className="font-semibold">
                               {team.teamNumber}
                             </span>
-                            {(team.teamName || team.teamData?.name) && (
+                            {team.team.name && (
                               <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                {team.teamName || team.teamData?.name}
+                                {team.team.name}
                               </p>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-bold">
-                          {qs?.tot?.value?.toFixed(1) ?? "-"}
+                          {(team.team.quickStats?.tot.value)?.toFixed(1) ?? "-"}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {qs?.auto?.value?.toFixed(1) ?? "-"}
+                          {(team.team.quickStats?.auto.value)?.toFixed(1) ?? "-"}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {qs?.dc?.value?.toFixed(1) ?? "-"}
+                          {(team.team.quickStats?.dc.value)?.toFixed(1) ?? "-"}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {qs?.eg?.value?.toFixed(1) ?? "-"}
+                          {(team.team.quickStats?.eg.value)?.toFixed(1) ?? "-"}
                         </TableCell>
                         <TableCell className="text-right">
                           <span className="text-green-600">{stats.wins}</span>
@@ -1060,7 +865,7 @@ function TeamsTab({
   );
 }
 
-function AwardCard({ award }: { award: AwardFields }) {
+function AwardCard({ award }: { award: FtcAward }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-4 p-4">
@@ -1087,20 +892,20 @@ function AwardCard({ award }: { award: AwardFields }) {
   );
 }
 
-function AwardsTab({ awards }: { awards: AwardFields[] }) {
+function AwardsTab({ awards }: { awards: FtcAward[] }) {
   const sortedAwards = [...awards].sort((a, b) => {
     const typeOrder: AwardType[] = [
-      "Winner",
-      "Finalist",
-      "Inspire",
-      "Think",
-      "Connect",
-      "Innovate",
-      "Design",
-      "Motivate",
-      "Control",
-      "Promote",
-      "Compass",
+      FtcScoutAwardType.Winner,
+      FtcScoutAwardType.Finalist,
+      FtcScoutAwardType.Inspire,
+      FtcScoutAwardType.Think,
+      FtcScoutAwardType.Connect,
+      FtcScoutAwardType.Innovate,
+      FtcScoutAwardType.Design,
+      FtcScoutAwardType.Motivate,
+      FtcScoutAwardType.Control,
+      FtcScoutAwardType.Promote,
+      FtcScoutAwardType.Compass,
     ];
     const aOrder = typeOrder.indexOf(a.type);
     const bOrder = typeOrder.indexOf(b.type);
@@ -1135,7 +940,7 @@ function AwardsTab({ awards }: { awards: AwardFields[] }) {
   );
 }
 
-function DetailsTab({ event }: { event: EventCoreFragment }) {
+function DetailsTab({ event }: { event: FtcEventDetail }) {
   return (
     <Card>
       <CardHeader>
@@ -1244,47 +1049,12 @@ function DetailsTab({ event }: { event: EventCoreFragment }) {
 function EventDetailPage() {
   const { code } = Route.useParams();
   const navigate = useNavigate();
-
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [autoSyncAttempted, setAutoSyncAttempted] = useState(false);
-  const [isSyncingTeams, setIsSyncingTeams] = useState(false);
-
-  // Fetch event data from Convex
-  const eventData = useQuery(api.integrations.ftcScout.getEvent, {
-    eventCode: code,
-  });
-
-  // Sync actions
-  const syncEventData = useAction(
-    api.integrations.ftcScoutActions.syncEventData
-  );
-  const syncTeamData = useAction(
-    api.integrations.ftcScoutActions.syncFtcScoutData
-  );
-
-  const handleSync = useCallback(async () => {
-    setIsSyncing(true);
-    setSyncError(null);
-    try {
-      const result = await syncEventData({ eventCode: code });
-      if (!result.success) {
-        setSyncError(result.message);
-      }
-    } catch (error) {
-      setSyncError(error instanceof Error ? error.message : "Sync failed");
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [syncEventData, code]);
-
-  // Auto-sync when event not found in database
-  useEffect(() => {
-    if (eventData === null && !autoSyncAttempted && !isSyncing) {
-      setAutoSyncAttempted(true);
-      handleSync();
-    }
-  }, [eventData, autoSyncAttempted, isSyncing, handleSync]);
+  const {
+    data: eventData,
+    error: eventError,
+    isLoading,
+    refetch,
+  } = useFtcScoutEventPage(code);
 
   const handleTeamClick = (teamNumber: number) => {
     navigate({
@@ -1293,30 +1063,8 @@ function EventDetailPage() {
     });
   };
 
-  // Sync all unsynced teams
-  const handleSyncAllTeams = useCallback(async () => {
-    if (!eventData?.teams) return;
-    
-    const unsyncedTeams = eventData.teams.filter((t) => !t.teamData);
-    if (unsyncedTeams.length === 0) return;
-
-    setIsSyncingTeams(true);
-    try {
-      // Sync all teams in parallel
-      await Promise.all(
-        unsyncedTeams.map((team) =>
-          syncTeamData({ teamNumber: team.teamNumber })
-        )
-      );
-    } catch (error) {
-      console.error("Error syncing teams:", error);
-    } finally {
-      setIsSyncingTeams(false);
-    }
-  }, [eventData?.teams, syncTeamData]);
-
   // Loading state
-  if (eventData === undefined || (eventData === null && !autoSyncAttempted)) {
+  if (isLoading && !eventData) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -1336,29 +1084,14 @@ function EventDetailPage() {
     );
   }
 
-  // Syncing state - fetching from FTC Scout API
-  if (isSyncing) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <RefreshCw className="h-12 w-12 animate-spin text-primary mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Fetching Event Data</h2>
-        <p className="text-muted-foreground">
-          Event &quot;{code}&quot; not found in database. Fetching from FTC
-          Scout...
-        </p>
-      </div>
-    );
-  }
-
-  // Not found state (after sync attempt failed)
-  if (eventData === null) {
+  if (!eventData) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
         <h2 className="text-xl font-semibold mb-2">Event Not Found</h2>
         <p className="text-muted-foreground mb-4 text-center max-w-md">
-          {syncError ||
-            `The event "${code}" could not be found in the database or FTC Scout. Please check the event code and try again.`}
+          {eventError ||
+            `The event "${code}" could not be found in FTC Scout. Please check the event code and try again.`}
         </p>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
@@ -1367,7 +1100,7 @@ function EventDetailPage() {
               Back to Events
             </Link>
           </Button>
-          <Button onClick={handleSync}>
+          <Button onClick={refetch}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
           </Button>
@@ -1377,10 +1110,10 @@ function EventDetailPage() {
   }
 
   // Parse the event data
-  const event = eventData.data as EventCoreFragment;
-  const matches = eventData.matches.map((m: { id: string; data: unknown }) => m.data as MatchCoreFragment);
-  const awards = eventData.awards.map((a: { id: string; data: unknown }) => a.data as AwardFields);
-  const teams = eventData.teams as TeamEventData[];
+  const event = eventData;
+  const matches = event.matches;
+  const awards = event.awards;
+  const teams = event.teams;
 
   return (
     <div className="space-y-6">
@@ -1410,13 +1143,13 @@ function EventDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleSync}
-            disabled={isSyncing}
+            onClick={refetch}
+            disabled={isLoading}
           >
             <RefreshCw
-              className={cn("h-4 w-4 mr-2", isSyncing && "animate-spin")}
+              className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")}
             />
-            {isSyncing ? "Syncing..." : "Reload"}
+            {isLoading ? "Loading..." : "Reload"}
           </Button>
         </div>
 
@@ -1429,8 +1162,6 @@ function EventDetailPage() {
             teams={teams}
             matches={matches}
             onTeamClick={handleTeamClick}
-            onSyncAllTeams={handleSyncAllTeams}
-            isSyncingTeams={isSyncingTeams}
           />
         </TabsContent>
 
