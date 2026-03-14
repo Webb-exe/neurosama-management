@@ -8,7 +8,7 @@ import {
   useRef,
 } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { useAuth, useClerk } from "@clerk/clerk-react";
+import { useAuth, useClerk } from "@clerk/tanstack-react-start";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
 

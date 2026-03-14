@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/tanstack-react-start";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
 
