@@ -1,4 +1,4 @@
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/tanstack-react-start";
 import { DesktopSidebar, MobileSidebar } from "./Sidebar";
 import { useAuthContext } from "@/context/AuthContext";
 
