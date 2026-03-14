@@ -71,19 +71,96 @@ const schema = defineEntSchema({
     .index("by_endDate", ["endDate"])
     .edge("firstEvent", { to: "calenderFirstEvents", field: "firstEventId", optional: true }),
 
-  teamScouting: defineEnt({
-    teamCode: v.string(),
+  scoutingCycles: defineEnt({
+    name: v.string(),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdBy: v.id("users"),
     createdAt: v.number(),
+    archivedAt: v.optional(v.number()),
   })
-    .index("by_teamCode", ["teamCode"])
-    .edges("teamComments", { ref: "teamScoutingId" }),
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 
-  teamComments: defineEnt({
-    teamScoutingId: v.id("teamScouting"),
-    comment: v.string(),
+  scoutingForms: defineEnt({
+    name: v.string(),
+    description: v.string(),
+    createdBy: v.id("users"),
     createdAt: v.number(),
+    updatedAt: v.number(),
+    draftVersionId: v.optional(v.id("scoutingFormVersions")),
+    latestPublishedVersionId: v.optional(v.id("scoutingFormVersions")),
   })
-    .edge("teamScouting", { to: "teamScouting", field: "teamScoutingId" }),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_updatedAt", ["updatedAt"]),
+
+  scoutingFormVersions: defineEnt({
+    formId: v.id("scoutingForms"),
+    status: v.union(v.literal("draft"), v.literal("published")),
+    versionNumber: v.optional(v.number()),
+    title: v.string(),
+    description: v.string(),
+    teamBindingMode: v.union(
+      v.literal("preselected"),
+      v.literal("selectAtSubmission"),
+    ),
+    questions: v.any(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+    publishedAt: v.optional(v.number()),
+  })
+    .index("by_formId_status", ["formId", "status"])
+    .index("by_formId_versionNumber", ["formId", "versionNumber"])
+    .index("by_formId_createdAt", ["formId", "createdAt"]),
+
+  scoutingSessions: defineEnt({
+    tokenHash: v.string(),
+    cycleId: v.id("scoutingCycles"),
+    formId: v.id("scoutingForms"),
+    formVersionId: v.id("scoutingFormVersions"),
+    formNameSnapshot: v.string(),
+    formVersionNumberSnapshot: v.number(),
+    status: v.union(
+      v.literal("open"),
+      v.literal("submitted"),
+      v.literal("closed"),
+    ),
+    preselectedTeamNumber: v.optional(v.number()),
+    selectedTeamNumber: v.optional(v.number()),
+    answers: v.any(),
+    lastAutosavedAt: v.number(),
+    submittedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    tagWritesApplied: v.any(),
+  })
+    .index("by_tokenHash", ["tokenHash"])
+    .index("by_cycleId_status", ["cycleId", "status"])
+    .index("by_formId_status", ["formId", "status"])
+    .index("by_cycleId_selectedTeamNumber", ["cycleId", "selectedTeamNumber"])
+    .index("by_formVersionId", ["formVersionId"]),
+
+  cycleTeamScouting: defineEnt({
+    cycleId: v.id("scoutingCycles"),
+    teamNumber: v.number(),
+    tags: v.record(v.string(), v.string()),
+    responseCount: v.number(),
+    lastResponseAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_cycleId_teamNumber", ["cycleId", "teamNumber"])
+    .index("by_cycleId_updatedAt", ["cycleId", "updatedAt"]),
+
+  scoutingTagDefinitions: defineEnt({
+    key: v.string(),
+    label: v.string(),
+    sortMode: v.union(v.literal("text"), v.literal("numeric")),
+    valueKind: v.union(v.literal("scalar"), v.literal("multi")),
+    suggestedValues: v.array(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });
 
 export const entDefinitions = getEntDefinitions(schema);

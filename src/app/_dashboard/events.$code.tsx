@@ -38,6 +38,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getScoutingSearch } from "@/components/scouting/search";
 import { useTimezone } from "@/context/TimezoneContext";
 import { useState, useMemo } from "react";
 import {
@@ -1060,6 +1061,7 @@ function EventDetailPage() {
     navigate({
       to: "/scouting/team/$number",
       params: { number: teamNumber.toString() },
+      search: getScoutingSearch(),
     });
   };
 

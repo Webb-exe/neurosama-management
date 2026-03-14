@@ -5,7 +5,6 @@ import {
   CheckSquare,
   Settings,
   Menu,
-  Wrench,
   Globe,
   CalendarDays,
   Trophy,
@@ -165,8 +164,7 @@ function NavLinks({
 function RobotLogo({ className }: { className?: string }) {
   return (
     <div className={cn("relative", className)}>
-      <Wrench className="h-6 w-6 text-primary" />
-      <div className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+      <img src="/logo.svg" alt="Neurosama Management" />
     </div>
   );
 }
@@ -256,13 +254,8 @@ export function DesktopSidebar() {
   return (
     <aside className="hidden lg:flex h-screen w-64 flex-col border-r border-border/50 bg-sidebar">
       <div className="flex h-16 items-center border-b border-border/50 px-4">
-        <Link to="/" className="flex items-center gap-3 font-semibold group">
+        <Link to="/" className="w-full">
           <RobotLogo />
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-primary">
-              Neurosama Managment
-            </span>
-          </div>
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto p-3">
