@@ -1,4 +1,4 @@
-import { RedirectToSignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
+import { SignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   return (
@@ -7,7 +7,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
         {children}
       </SignedIn>
       <SignedOut>
-        <RedirectToSignIn />
+        <SignIn />
       </SignedOut>
     </>
   );
