@@ -5,7 +5,7 @@ import {
   Scripts,
   Link,
 } from "@tanstack/react-router";
-import { ClerkProvider } from "@clerk/clerk-react";
+import { ClerkProvider } from "@clerk/tanstack-react-start";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import ReactQueryProvider from "@/components/ReactQueryProvider";
 import { AuthProvider } from "@/context/AuthContext";

@@ -1,18 +1,9 @@
 import { UserButton } from "@clerk/clerk-react";
 import { DesktopSidebar, MobileSidebar } from "./Sidebar";
 import { useAuthContext } from "@/context/AuthContext";
-import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { authStatus, isLoading } = useAuthContext();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isLoading && authStatus.status === "unauthenticated") {
-      navigate({ to: "/login" });
-    }
-  }, [isLoading, authStatus.status, navigate]);
 
   if (isLoading) {
     return (

@@ -1,14 +1,14 @@
-import { SignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
+import { RedirectToSignIn, Show } from "@clerk/tanstack-react-start";
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SignedIn>
+      <Show when="signed-in">
         {children}
-      </SignedIn>
-      <SignedOut>
-        <SignIn />
-      </SignedOut>
+      </Show>
+      <Show when="signed-out">
+        <RedirectToSignIn />
+      </Show>
     </>
   );
 }
