@@ -642,6 +642,25 @@ export function getVisibleQuestions(
   );
 }
 
+export function stripHiddenQuestionAnswers(
+  items: ScoutingFormItem[],
+  answers: ScoutingAnswers,
+): ScoutingAnswers {
+  const visibleQuestionIds = new Set(getVisibleQuestions(items, answers).map((question) => question.id));
+  let changed = false;
+  const nextAnswers: ScoutingAnswers = {};
+
+  for (const [questionId, answer] of Object.entries(answers)) {
+    if (!visibleQuestionIds.has(questionId)) {
+      changed = true;
+      continue;
+    }
+    nextAnswers[questionId] = answer;
+  }
+
+  return changed ? nextAnswers : answers;
+}
+
 export function normalizeAnswerForQuestion(
   question: ScoutingQuestion,
   answer: ScoutingAnswerValue,

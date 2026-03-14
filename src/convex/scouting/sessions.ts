@@ -5,6 +5,7 @@ import {
   getVisibleQuestions,
   normalizeFormItems,
   normalizeAnswerForQuestion,
+  stripHiddenQuestionAnswers,
   type ScoutingAnswers,
   type ScoutingFormItem,
   type ScoutingQuestion,
@@ -235,7 +236,7 @@ export const autosaveSession = mutation({
 
     const items = normalizeFormItems(version.questions as ScoutingFormItem[]);
     const questions = getQuestions(items);
-    const answers = coerceAnswers(questions, args.answers);
+    const answers = stripHiddenQuestionAnswers(items, coerceAnswers(questions, args.answers));
     const now = Date.now();
 
     await ctx.db.patch(session._id, {
@@ -277,7 +278,7 @@ export const submitSession = mutation({
 
     const items = normalizeFormItems(version.questions as ScoutingFormItem[]);
     const questions = getQuestions(items);
-    const answers = coerceAnswers(questions, args.answers);
+    const answers = stripHiddenQuestionAnswers(items, coerceAnswers(questions, args.answers));
     const visibleQuestions = validateSubmission(items, answers);
     const teamNumber =
       session.preselectedTeamNumber ?? args.selectedTeamNumber ?? session.selectedTeamNumber;

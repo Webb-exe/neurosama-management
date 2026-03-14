@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle2, CloudOff, LoaderCircle, ShieldCheck } from "lucide-react";
@@ -7,6 +7,7 @@ import { FormRenderer } from "@/components/scouting/FormRenderer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   normalizeFormItems,
+  stripHiddenQuestionAnswers,
   type ScoutingAnswers,
   type ScoutingFormItem,
 } from "@/lib/scouting";
@@ -51,10 +52,13 @@ function PublicScoutingSessionPage() {
   const saveSequenceRef = useRef(0);
 
   const localStorageKey = `scouting-session:${token}`;
-  const items =
-    session?.status === "open"
-      ? normalizeFormItems(session.questions as ScoutingFormItem[])
-      : [];
+  const items = useMemo(
+    () =>
+      session?.status === "open"
+        ? normalizeFormItems(session.questions as ScoutingFormItem[])
+        : [],
+    [session],
+  );
   const hasPreselectedTeamNumber = session?.status === "open" && session.preselectedTeamNumber != null;
   const effectiveTeamBindingMode =
     hasPreselectedTeamNumber ? "preselected" : session?.teamBindingMode ?? "selectAtSubmission";
@@ -117,6 +121,10 @@ function PublicScoutingSessionPage() {
       }),
     );
   }, [answers, lastSavedAt, localStorageKey, selectedTeamNumber, session]);
+
+  useEffect(() => {
+    setAnswers((current) => stripHiddenQuestionAnswers(items, current));
+  }, [items]);
 
   useEffect(() => {
     if (session?.status !== "open" || !initializedRef.current || saveState === "submitting") {
@@ -267,10 +275,12 @@ function PublicScoutingSessionPage() {
             items={items}
             answers={answers}
             onAnswerChange={(questionId, value) =>
-              setAnswers((current) => ({
-                ...current,
-                [questionId]: value,
-              }))
+              setAnswers((current) =>
+                stripHiddenQuestionAnswers(items, {
+                  ...current,
+                  [questionId]: value,
+                }),
+              )
             }
             teamBindingMode={effectiveTeamBindingMode}
             selectedTeamNumber={selectedTeamNumber}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowLeft, Eye } from "lucide-react";
@@ -14,6 +14,7 @@ import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
 import {
   normalizeFormItems,
+  stripHiddenQuestionAnswers,
   type ScoutingAnswers,
   type ScoutingFormItem,
 } from "@/lib/scouting";
@@ -54,16 +55,23 @@ function ScoutingFormPreviewPage() {
   };
 
   const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
-  const items =
-    formData?.draftVersion?.questions || formData?.form
-      ? normalizeFormItems(formData?.draftVersion?.questions ?? [])
-      : [];
+  const items = useMemo(
+    () =>
+      formData?.draftVersion?.questions || formData?.form
+        ? normalizeFormItems(formData?.draftVersion?.questions ?? [])
+        : [],
+    [formData],
+  );
   const teamBindingMode = formData?.draftVersion?.teamBindingMode ?? "selectAtSubmission";
 
   useEffect(() => {
     setAnswers({});
     setSelectedTeamNumber("");
   }, [formId, formData?.draftVersion?._id, formData?.draftVersion?.updatedAt]);
+
+  useEffect(() => {
+    setAnswers((current) => stripHiddenQuestionAnswers(items, current));
+  }, [items]);
 
   return (
     <ScoutingFrame
@@ -123,15 +131,16 @@ function ScoutingFormPreviewPage() {
               items={items as ScoutingFormItem[]}
               answers={answers}
               onAnswerChange={(questionId, value) =>
-                setAnswers((current) => ({
-                  ...current,
-                  [questionId]: value,
-                }))
+                setAnswers((current) =>
+                  stripHiddenQuestionAnswers(items, {
+                    ...current,
+                    [questionId]: value,
+                  }),
+                )
               }
               teamBindingMode={teamBindingMode}
               selectedTeamNumber={selectedTeamNumber}
               onSelectedTeamNumberChange={setSelectedTeamNumber}
-              preselectedTeamNumber={null}
             />
           </div>
         </div>
