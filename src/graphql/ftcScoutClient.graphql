@@ -10,10 +10,32 @@ query GetConfiguredTeamEvents($number: Int!, $season: Int! = 2025) {
   }
 }
 
+query TeamByNumber($number: Int!, $season: Int!) {
+  teamByNumber(number: $number) {
+    events(season: $season) {
+      stats {
+        ... on TeamEventStats2025 {
+          opr {
+            totalPointsNp
+          }
+        }
+      }
+    }
+  }
+}
+
 query GetTeamPage($number: Int!, $season: Int! = 2025) {
   teamByNumber(number: $number) {
     ...ClientTeamFields
     events(season: $season) {
+      stats {
+        ... on TeamEventStats2025 {
+          rank
+          opr {
+            totalPointsNp
+          }
+        }
+      }
       awards {
         ...ClientAwardFields
       }

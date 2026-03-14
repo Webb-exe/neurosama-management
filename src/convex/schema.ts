@@ -115,7 +115,7 @@ const schema = defineEntSchema({
     .index("by_formId_createdAt", ["formId", "createdAt"]),
 
   scoutingSessions: defineEnt({
-    tokenHash: v.string(),
+    token: v.string(),
     cycleId: v.id("scoutingCycles"),
     formId: v.id("scoutingForms"),
     formVersionId: v.id("scoutingFormVersions"),
@@ -135,7 +135,7 @@ const schema = defineEntSchema({
     createdAt: v.number(),
     tagWritesApplied: v.any(),
   })
-    .index("by_tokenHash", ["tokenHash"])
+    .index("by_token", ["token"])
     .index("by_cycleId_status", ["cycleId", "status"])
     .index("by_formId_status", ["formId", "status"])
     .index("by_cycleId_selectedTeamNumber", ["cycleId", "selectedTeamNumber"])

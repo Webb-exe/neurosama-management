@@ -332,7 +332,7 @@ export function normalizeFormItems(rawItems: unknown): ScoutingFormItem[] {
     return [];
   }
 
-  return rawItems
+  const normalizedItems = rawItems
     .map((item, index) => {
       const candidate = item as RawScoutingItem;
       if ("type" in candidate) {
@@ -350,6 +350,15 @@ export function normalizeFormItems(rawItems: unknown): ScoutingFormItem[] {
     })
     .sort((left, right) => left.order - right.order)
     .map((item, index) => ({ ...item, order: index }));
+
+  const seenItemIds = new Set<string>();
+  return normalizedItems.filter((item) => {
+    if (seenItemIds.has(item.id)) {
+      return false;
+    }
+    seenItemIds.add(item.id);
+    return true;
+  });
 }
 
 export function reorderFormItems(
@@ -387,14 +396,27 @@ export function getPageItems(items: ScoutingFormItem[]): ScoutingPageItems[] {
   let currentPage: ScoutingPageItems = { page: null, items: [] };
   let legacyCurrentSection: ScoutingSectionItems | null = null;
   const sectionById = new Map<string, ScoutingSectionItems>();
+  const seenQuestionIds = new Set<string>();
+
+  const appendQuestionOnce = (sectionEntry: ScoutingSectionItems, question: ScoutingQuestion) => {
+    if (seenQuestionIds.has(question.id)) {
+      return;
+    }
+    seenQuestionIds.add(question.id);
+    sectionEntry.questions.push(question);
+  };
 
   const appendImplicitQuestion = (question: ScoutingQuestion) => {
     const lastEntry = currentPage.items[currentPage.items.length - 1];
     if (lastEntry?.section === null) {
-      lastEntry.questions.push(question);
+      appendQuestionOnce(lastEntry, question);
       return;
     }
-    currentPage.items.push({ section: null, questions: [question] });
+    const implicitEntry: ScoutingSectionItems = { section: null, questions: [] };
+    appendQuestionOnce(implicitEntry, question);
+    if (implicitEntry.questions.length > 0) {
+      currentPage.items.push(implicitEntry);
+    }
   };
 
   const pushPage = () => {
@@ -413,6 +435,10 @@ export function getPageItems(items: ScoutingFormItem[]): ScoutingPageItems[] {
     }
 
     if (isSection(item)) {
+      if (sectionById.has(item.id)) {
+        legacyCurrentSection = sectionById.get(item.id) ?? null;
+        continue;
+      }
       const sectionEntry: ScoutingSectionItems = { section: item, questions: [] };
       currentPage.items.push(sectionEntry);
       sectionById.set(item.id, sectionEntry);
@@ -425,7 +451,7 @@ export function getPageItems(items: ScoutingFormItem[]): ScoutingPageItems[] {
       if (explicitSectionId) {
         const sectionEntry = sectionById.get(explicitSectionId);
         if (sectionEntry) {
-          sectionEntry.questions.push(item);
+          appendQuestionOnce(sectionEntry, item);
           continue;
         }
       }
@@ -434,7 +460,7 @@ export function getPageItems(items: ScoutingFormItem[]): ScoutingPageItems[] {
     }
 
     if (legacyCurrentSection) {
-      legacyCurrentSection.questions.push(item);
+      appendQuestionOnce(legacyCurrentSection, item);
       continue;
     }
 

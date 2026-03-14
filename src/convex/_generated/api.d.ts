@@ -20,6 +20,7 @@ import type * as functions from "../functions.js";
 import type * as integrations_ftcCalendarSync from "../integrations/ftcCalendarSync.js";
 import type * as integrations_http from "../integrations/http.js";
 import type * as integrations_index from "../integrations/index.js";
+import type * as scouting_admin from "../scouting/admin.js";
 import type * as scouting_cycles from "../scouting/cycles.js";
 import type * as scouting_forms from "../scouting/forms.js";
 import type * as scouting_index from "../scouting/index.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   "integrations/ftcCalendarSync": typeof integrations_ftcCalendarSync;
   "integrations/http": typeof integrations_http;
   "integrations/index": typeof integrations_index;
+  "scouting/admin": typeof scouting_admin;
   "scouting/cycles": typeof scouting_cycles;
   "scouting/forms": typeof scouting_forms;
   "scouting/index": typeof scouting_index;

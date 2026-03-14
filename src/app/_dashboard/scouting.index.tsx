@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { ArrowRight, Search, Telescope } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
@@ -20,6 +20,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_dashboard/scouting/")({
@@ -33,6 +43,9 @@ function ScoutingHomePage() {
   const { user } = useAuthContext();
   const canManage = user?.role === "owner" || user?.role === "admin";
   const [teamSearch, setTeamSearch] = useState(search.teamNumber ?? "");
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const resetAllScoutingData = useMutation(api.scouting.admin.resetAllScoutingData);
 
   const changeCycle = (cycleId: string) => {
     navigate({
@@ -68,6 +81,16 @@ function ScoutingHomePage() {
       params: { number: teamNumber },
       search: getScoutingSearch(resolvedCycleId),
     });
+  };
+
+  const handleResetAllScoutingData = async () => {
+    setIsResetting(true);
+    try {
+      await resetAllScoutingData({});
+      setResetDialogOpen(false);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -162,6 +185,49 @@ function ScoutingHomePage() {
           cycleId={resolvedCycleId}
         />
       </div>
+
+      {canManage ? (
+        <Card className="rounded-[28px] border-red-400/40 bg-red-50/30 shadow-sm dark:bg-red-900/10">
+          <CardHeader>
+            <CardTitle className="text-2xl text-red-700 dark:text-red-300">Scouting Danger Zone</CardTitle>
+            <CardDescription>
+              Reset all scouting data (cycles, forms, sessions, tags, and team scouting records).
+              This cannot be undone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="destructive"
+              onClick={() => setResetDialogOpen(true)}
+              disabled={isResetting}
+            >
+              Reset All Scouting Data
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset all scouting data?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes all scouting cycles, forms, form versions, sessions, tags, and team
+              scouting records. Existing scout links and responses will stop working immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetAllScoutingData}
+              disabled={isResetting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isResetting ? "Resetting..." : "Reset Everything"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ScoutingFrame>
   );
 }

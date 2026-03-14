@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useTimezone } from "@/context/TimezoneContext";
-import { useState, useMemo } from "react";
+import { useState, useMemo, type FormEvent } from "react";
 import { useFtcScoutConfiguredTeamEvents } from "@/lib/ftcScout/hooks";
 import type { FtcConfiguredTeamEvent } from "@/lib/ftcScout/queries";
 
@@ -253,11 +253,23 @@ function EventCard({
 
 function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [eventCodeInput, setEventCodeInput] = useState("");
   const [seasonFilter, setSeasonFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const navigate = useNavigate();
   const ftcSettings = useQuery(api.settings.settings.getFtcSettings, {});
   const { data: teamEventsData, isLoading: isEventsLoading } =
     useFtcScoutConfiguredTeamEvents(ftcSettings?.ftcTeamNumber ?? null);
+  const normalizedEventCode = eventCodeInput.trim().toUpperCase();
+
+  const handleEventCodeSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!normalizedEventCode) return;
+    navigate({
+      to: "/events/$code",
+      params: { code: normalizedEventCode },
+    });
+  };
 
   const seasons = useMemo(() => {
     if (!teamEventsData?.events) return [];
@@ -373,6 +385,21 @@ function EventsPage() {
                 className="pl-9"
               />
             </div>
+
+            {/* Direct Event Code */}
+            <form
+              onSubmit={handleEventCodeSubmit}
+              className="flex w-full md:w-[280px] gap-2"
+            >
+              <Input
+                placeholder="Event code (e.g. USMOCMP)"
+                value={eventCodeInput}
+                onChange={(e) => setEventCodeInput(e.target.value)}
+              />
+              <Button type="submit" variant="outline" disabled={!normalizedEventCode}>
+                Go
+              </Button>
+            </form>
 
             {/* Season Filter */}
             <Select value={seasonFilter} onValueChange={setSeasonFilter}>

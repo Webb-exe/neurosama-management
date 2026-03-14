@@ -97,11 +97,10 @@ export const generateSessionLink = mutation({
     }
 
     const token = generateSessionToken();
-    const tokenHash = await hashToken(token);
     const now = Date.now();
 
     const sessionId = await ctx.db.insert("scoutingSessions", {
-      tokenHash,
+      token,
       cycleId: cycle._id,
       formId: form._id,
       formVersionId: version._id,
@@ -161,10 +160,9 @@ export const getPublicSession = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const tokenHash = await hashToken(args.token.trim());
     const session = await ctx.db
       .query("scoutingSessions")
-      .withIndex("by_tokenHash", (query) => query.eq("tokenHash", tokenHash))
+      .withIndex("by_token", (query) => query.eq("token", args.token.trim()))
       .first();
 
     if (!session) {
@@ -219,10 +217,9 @@ export const autosaveSession = mutation({
     lastAutosavedAt: v.number(),
   }),
   handler: async (ctx, args) => {
-    const tokenHash = await hashToken(args.token.trim());
     const session = await ctx.db
       .query("scoutingSessions")
-      .withIndex("by_tokenHash", (query) => query.eq("tokenHash", tokenHash))
+      .withIndex("by_token", (query) => query.eq("token", args.token.trim()))
       .first();
 
     if (!session || session.status !== "open") {
@@ -261,10 +258,9 @@ export const submitSession = mutation({
     teamNumber: v.number(),
   }),
   handler: async (ctx, args) => {
-    const tokenHash = await hashToken(args.token.trim());
     const session = await ctx.db
       .query("scoutingSessions")
-      .withIndex("by_tokenHash", (query) => query.eq("tokenHash", tokenHash))
+      .withIndex("by_token", (query) => query.eq("token", args.token.trim()))
       .first();
 
     if (!session || session.status !== "open") {

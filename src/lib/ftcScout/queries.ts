@@ -98,6 +98,10 @@ export type FtcTeamSummary = FtcTeamProfile & {
   events: Array<{
     awards: FtcTeamPageAward[];
     event: FtcTeamPageEvent;
+    stats: Extract<
+      NonNullable<NonNullable<GetTeamPageQuery["teamByNumber"]>["events"][number]["stats"]>,
+      { __typename?: "TeamEventStats2025" }
+    > | null;
   }>;
 };
 
@@ -455,6 +459,7 @@ export function normalizeTeamPageResult(
     events: team.events.map((entry) => ({
       awards: entry.awards.map(unmaskAward),
       event: unmaskEvent(entry.event),
+      stats: entry.stats?.__typename === "TeamEventStats2025" ? entry.stats : null,
     })),
   };
 }

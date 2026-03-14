@@ -57,6 +57,7 @@ export const getTeamSummary = query({
         status: v.union(v.literal("open"), v.literal("submitted"), v.literal("closed")),
         submittedAt: v.union(v.number(), v.null()),
         lastAutosavedAt: v.number(),
+        path: v.string(),
       }),
     ),
   }),
@@ -107,6 +108,7 @@ export const getTeamSummary = query({
           status: session.status,
           submittedAt: session.submittedAt ?? null,
           lastAutosavedAt: session.lastAutosavedAt,
+          path: `/scouting/session/${session.token}`,
         })),
     };
   },

@@ -14,6 +14,7 @@ type Ctx = QueryCtx | MutationCtx;
 export async function getCurrentUser(ctx: Ctx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
+    console.log("No identity found");
     return null;
   }
 
@@ -23,6 +24,7 @@ export async function getCurrentUser(ctx: Ctx) {
     .first();
 
   if (!clerkInfo) {
+    console.log("No clerk info found");
     return null;
   }
 
@@ -30,6 +32,10 @@ export async function getCurrentUser(ctx: Ctx) {
     .query("users")
     .withIndex("clerkInfoId", (query) => query.eq("clerkInfoId", clerkInfo._id))
     .first();
+
+  if (!user) {
+    console.log("No user found");
+  }
 
   return user ?? null;
 }

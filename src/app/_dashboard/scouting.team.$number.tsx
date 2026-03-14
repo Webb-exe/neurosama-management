@@ -4,11 +4,11 @@ import { useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
   ExternalLink,
+  Hash,
   Link2,
-  PencilLine,
-  Tags,
-  Trophy,
+  TrendingUp,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
@@ -20,6 +20,12 @@ import {
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
 import { useFtcScoutTeamPage } from "@/lib/ftcScout/hooks";
+import {
+  formatAnswerForDisplay,
+  getQuestions,
+  normalizeFormItems,
+  type ScoutingFormItem,
+} from "@/lib/scouting";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +34,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_dashboard/scouting/team/$number")({
@@ -45,7 +59,10 @@ function ScoutingTeamPage() {
   const [manualTagKey, setManualTagKey] = useState("");
   const [manualTagValue, setManualTagValue] = useState("");
   const [selectedFormId, setSelectedFormId] = useState("");
-  const [generatedLink, setGeneratedLink] = useState("");
+  const [modalLink, setModalLink] = useState<string | null>(null);
+  const [selectedResponseId, setSelectedResponseId] = useState<Id<"scoutingSessions"> | null>(
+    null,
+  );
 
   const changeCycle = (cycleId: string) => {
     navigate({
@@ -76,10 +93,18 @@ function ScoutingTeamPage() {
         }
       : "skip",
   );
+  const responseDetail = useQuery(
+    api.scouting.sessions.getResponseDetail,
+    canManage && selectedResponseId ? { sessionId: selectedResponseId } : "skip",
+  );
 
   const upsertManualTeamTag = useMutation(api.scouting.tags.upsertManualTeamTag);
   const deleteManualTeamTag = useMutation(api.scouting.tags.deleteManualTeamTag);
   const generateSessionLink = useMutation(api.scouting.sessions.generateSessionLink);
+  const quickStats = teamPage.data?.quickStats;
+  const responseQuestions = responseDetail
+    ? getQuestions(normalizeFormItems(responseDetail.questions as ScoutingFormItem[]))
+    : [];
 
   return (
     <ScoutingFrame
@@ -115,26 +140,34 @@ function ScoutingTeamPage() {
         ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <TeamStatCard
-          icon={<Tags className="h-4 w-4" />}
-          label="Cycle tags"
-          value={String(Object.keys(teamSummary?.team.tags ?? {}).length)}
-          hint="Current cycle metadata"
-        />
-        <TeamStatCard
-          icon={<PencilLine className="h-4 w-4" />}
-          label="Responses"
-          value={String(teamSummary?.responses.length ?? 0)}
-          hint="Open and submitted sessions"
-        />
-        <TeamStatCard
-          icon={<Trophy className="h-4 w-4" />}
-          label="Rookie year"
-          value={String(teamPage.data?.rookieYear ?? "Unknown")}
-          hint="FTC Scout snapshot"
-        />
-      </div>
+      {quickStats ? (
+        <div className="grid gap-4 lg:grid-cols-4">
+          <TeamStatCard
+            icon={<TrendingUp className="h-4 w-4" />}
+            label="Total OPR"
+            value={formatNumber(quickStats.tot.value)}
+            hint={`Rank #${quickStats.tot.rank}`}
+          />
+          <TeamStatCard
+            icon={<TrendingUp className="h-4 w-4" />}
+            label="Auto OPR"
+            value={formatNumber(quickStats.auto.value)}
+            hint={`Rank #${quickStats.auto.rank}`}
+          />
+          <TeamStatCard
+            icon={<TrendingUp className="h-4 w-4" />}
+            label="DC OPR"
+            value={formatNumber(quickStats.dc.value)}
+            hint={`Rank #${quickStats.dc.rank}`}
+          />
+          <TeamStatCard
+            icon={<Hash className="h-4 w-4" />}
+            label="EG OPR"
+            value={formatNumber(quickStats.eg.value)}
+            hint={`Rank #${quickStats.eg.rank}`}
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
@@ -190,19 +223,42 @@ function ScoutingTeamPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {(teamSummary?.responses ?? []).map((response) => (
-                <div
-                  key={response._id}
-                  className="rounded-[22px] border border-border/70 bg-background/80 p-4"
-                >
-                  <p className="font-medium">
-                    {response.formName} (v{response.formVersionNumber})
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {response.status === "submitted" && response.submittedAt
-                      ? `Submitted ${new Date(response.submittedAt).toLocaleString()}`
-                      : `Last autosave ${new Date(response.lastAutosavedAt).toLocaleString()}`}
-                  </p>
-                </div>
+                    <div
+                      key={response._id}
+                      className="rounded-[22px] border border-border/70 bg-background/80 p-4"
+                    >
+                      <p className="font-medium">
+                        {response.formName} (v{response.formVersionNumber}) 
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Status: {response.status}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {response.status === "submitted" && response.submittedAt
+                          ? `Submitted ${new Date(response.submittedAt).toLocaleString()}`
+                          : `Last autosave ${new Date(response.lastAutosavedAt).toLocaleString()}`}
+                      </p>
+                      {canManage ? (
+                        <div className="mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedResponseId(response._id)}
+                          >
+                            View Response
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setModalLink(`${window.location.origin}${response.path}`)}
+                        >
+                          Open QR Code
+                        </Button>
+                      </div>
+                    </div>
               ))}
               {teamSummary && teamSummary.responses.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -288,23 +344,60 @@ function ScoutingTeamPage() {
                         formId: selectedFormId as Id<"scoutingForms">,
                         preselectedTeamNumber: teamNumber,
                       });
-                      setGeneratedLink(`${window.location.origin}${result.path}`);
+                      setModalLink(`${window.location.origin}${result.path}`);
                     }}
                   >
                     <Link2 className="mr-2 h-4 w-4" />
                     Generate Team Link
                   </Button>
-                  {generatedLink ? (
-                    <Input
-                      value={generatedLink}
-                      readOnly
-                      onFocus={(event) => event.target.select()}
-                    />
-                  ) : null}
                 </CardContent>
               </Card>
             </>
           ) : null}
+
+          <Card className="rounded-[30px] border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle>Event OPR Breakdown</CardTitle>
+              <CardDescription>
+                Event-by-event OPR and rank for this team in the selected season.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(teamPage.data?.events ?? []).length > 0 ? (
+                teamPage.data?.events.map((entry) => (
+                  <Link
+                  to="/events/$code"
+                  params={{ code: entry.event.code }}
+                  key={entry.event.code}
+                  className="p-1"
+                >
+                  <div
+                    key={entry.event.code}
+                    className="rounded-[18px] border border-border/70 bg-background/80 p-3 hover:border-primary/50"
+                  >
+                    <p className="text-sm font-medium">
+                      {entry.event.name} ({entry.event.code})
+                    </p>
+                    {entry.stats ? (
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        <p>Total OPR: {formatNumber(entry.stats.opr.totalPointsNp)}</p>
+                        <p>Rank: {entry.stats.rank}</p>
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Event OPR stats are not available for this event.
+                      </p>
+                    )}
+                  </div>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No event participations found for this team.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="rounded-[30px] border-border/70 shadow-sm">
             <CardHeader>
@@ -328,12 +421,98 @@ function ScoutingTeamPage() {
                       .join(", ")
                   : "Unknown"}
               </p>
+              <div className="mt-3 rounded-[18px] border border-border/70 bg-background/80 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-foreground">
+                  Team OPR + Rank (Season {quickStats?.season ?? "N/A"})
+                </p>
+                {quickStats ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <p>Total OPR: {formatNumber(quickStats.tot.value)}</p>
+                    <p>Total Rank: {quickStats.tot.rank}</p>
+                    <p>Auto OPR: {formatNumber(quickStats.auto.value)}</p>
+                    <p>Auto Rank: {quickStats.auto.rank}</p>
+                    <p>DC OPR: {formatNumber(quickStats.dc.value)}</p>
+                    <p>DC Rank: {quickStats.dc.rank}</p>
+                    <p>EG OPR: {formatNumber(quickStats.eg.value)}</p>
+                    <p>EG Rank: {quickStats.eg.rank}</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Team OPR stats are not available yet.
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      <Dialog open={Boolean(selectedResponseId)} onOpenChange={(open) => !open && setSelectedResponseId(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Response Detail</DialogTitle>
+            <DialogDescription>
+              Review question-by-question answers from this scouting response.
+            </DialogDescription>
+          </DialogHeader>
+          {responseDetail ? (
+            <div className="space-y-4">
+              <div className="rounded-[18px] border border-border/70 bg-background/80 p-3 text-sm text-muted-foreground">
+                {responseDetail.formName} | {responseDetail.cycleName} | v
+                {responseDetail.formVersionNumber}
+              </div>
+              {responseQuestions.map((question) => (
+                <div
+                  key={question.id}
+                  className="rounded-[18px] border border-border/70 bg-background/80 p-3"
+                >
+                  <p className="font-medium">{question.title}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {formatAnswerForDisplay(
+                      question,
+                      (responseDetail.answers as Record<string, unknown>)[question.id] as never,
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Loading response details...</p>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(modalLink)} onOpenChange={(open) => !open && setModalLink(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Team Link QR Code</DialogTitle>
+            <DialogDescription>
+              Scan this QR code to open the scouting link for Team {teamNumber}.
+            </DialogDescription>
+          </DialogHeader>
+          {modalLink ? (
+            <>
+              <div className="flex flex-col items-center gap-3">
+                <div className="rounded-2xl bg-white p-4 shadow-sm">
+                  <QRCodeSVG value={modalLink} size={240} includeMargin />
+                </div>
+                <p className="w-full break-all text-xs text-muted-foreground">{modalLink}</p>
+              </div>
+              <DialogFooter showCloseButton>
+                <Button asChild>
+                  <a href={modalLink} target="_blank" rel="noreferrer">
+                    Open Link
+                  </a>
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </ScoutingFrame>
   );
+}
+
+function formatNumber(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(2) : "N/A";
 }
 
 function TeamStatCard({
