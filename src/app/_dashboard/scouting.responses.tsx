@@ -16,11 +16,19 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_dashboard/scouting/responses")({
   validateSearch: parseCycleSearch,
@@ -65,174 +73,199 @@ function ScoutingResponsesPage() {
     ? getQuestions(normalizeFormItems(responseDetail.questions as ScoutingFormItem[]))
     : [];
 
+  if (!canManage) {
+    return (
+      <ScoutingFrame
+        title="Responses"
+        description="Inspect submitted sessions and review answers."
+        active="responses"
+        cycleId={resolvedCycleId}
+        onCycleChange={changeCycle}
+      >
+        <Card className="rounded-xl">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Not authorized</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
+            Only admins can inspect the response dashboard.
+          </CardContent>
+        </Card>
+      </ScoutingFrame>
+    );
+  }
+
   return (
     <ScoutingFrame
-      title="Scouting Responses"
-      description="Inspect submitted sessions and optionally include unfinished links in a cleaner review flow."
+      title="Responses"
+      description="Inspect submitted sessions and review answers."
       active="responses"
       cycleId={resolvedCycleId}
       onCycleChange={changeCycle}
     >
-      {!canManage ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Not Authorized</CardTitle>
+      <Card className="rounded-xl border-border/60 shadow-sm">
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          <div className="w-36">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Team</label>
+            <Input
+              type="number"
+              placeholder="Any"
+              className="h-9"
+              value={search.teamNumber ?? ""}
+              onChange={(event) =>
+                navigate({
+                  to: "/scouting/responses",
+                  search: (previous) =>
+                    mergeScoutingSearch(previous, {
+                      cycleId: resolvedCycleId,
+                      teamNumber: event.target.value || undefined,
+                    }),
+                })
+              }
+            />
+          </div>
+          <div className="w-48">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Form</label>
+            <Select
+              value={search.formId ?? "__all__"}
+              onValueChange={(value) =>
+                navigate({
+                  to: "/scouting/responses",
+                  search: (previous) =>
+                    mergeScoutingSearch(previous, {
+                      cycleId: resolvedCycleId,
+                      formId: value === "__all__" ? undefined : value,
+                    }),
+                })
+              }
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All forms" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All forms</SelectItem>
+                {(forms ?? []).map((form) => (
+                  <SelectItem key={form._id} value={form._id}>
+                    {form.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-border/60 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/30">
+            <input
+              type="checkbox"
+              className="accent-primary"
+              checked={search.showOpen}
+              onChange={(event) =>
+                navigate({
+                  to: "/scouting/responses",
+                  search: (previous) =>
+                    mergeScoutingSearch(previous, {
+                      cycleId: resolvedCycleId,
+                      showOpen: event.target.checked,
+                    }),
+                })
+              }
+            />
+            Unfinished
+          </label>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <Card className="rounded-xl border-border/60 shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {responses !== undefined
+                ? `${responses.length} response${responses.length === 1 ? "" : "s"}`
+                : "Loading…"}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Only admins can inspect the full response dashboard.
+          <CardContent className="space-y-1.5 p-3 pt-0">
+            {responses === undefined ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))
+            ) : responses.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No responses match these filters.
+              </p>
+            ) : (
+              responses.map((response) => (
+                <button
+                  key={response._id}
+                  type="button"
+                  className={cn(
+                    "w-full rounded-lg border p-3 text-left transition-colors",
+                    selectedResponseId === String(response._id)
+                      ? "border-primary/30 bg-primary/5"
+                      : "border-border/50 hover:bg-muted/30",
+                  )}
+                  onClick={() => setSelectedResponseId(String(response._id))}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium truncate">{response.formName}</p>
+                    <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+                      {response.status}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Team {response.selectedTeamNumber ?? "—"} · v{response.formVersionNumber}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+                    {response.submittedAt
+                      ? new Date(response.submittedAt).toLocaleString()
+                      : `Autosaved ${new Date(response.lastAutosavedAt).toLocaleString()}`}
+                  </p>
+                </button>
+              ))
+            )}
           </CardContent>
         </Card>
-      ) : null}
 
-      {canManage ? (
-        <>
-          <Card className="rounded-[30px] border-border/70 shadow-sm">
-            <CardHeader>
-              <CardTitle>Filters</CardTitle>
-              <CardDescription>
-                Narrow the response list by team, form, or include in-progress sessions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-4">
-              <Input
-                type="number"
-                placeholder="Team number"
-                value={search.teamNumber ?? ""}
-                onChange={(event) =>
-                  navigate({
-                    to: "/scouting/responses",
-                    search: (previous) =>
-                      mergeScoutingSearch(previous, {
-                        cycleId: resolvedCycleId,
-                        teamNumber: event.target.value || undefined,
-                      }),
-                  })
-                }
-              />
-              <select
-                className="border-input bg-background flex h-10 rounded-2xl border px-3 py-2 text-sm"
-                value={search.formId ?? ""}
-                onChange={(event) =>
-                  navigate({
-                    to: "/scouting/responses",
-                    search: (previous) =>
-                      mergeScoutingSearch(previous, {
-                        cycleId: resolvedCycleId,
-                        formId: event.target.value || undefined,
-                      }),
-                  })
-                }
-              >
-                <option value="">All forms</option>
-                {(forms ?? []).map((form) => (
-                  <option key={form._id} value={form._id}>
-                    {form.name}
-                  </option>
+        <Card className="rounded-xl border-border/60 shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Response detail
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            {selectedResponseId === null ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Select a response on the left to view answers.
+              </p>
+            ) : responseDetail === undefined ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full rounded-lg" />
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
                 ))}
-              </select>
-              <label className="flex items-center gap-2 rounded-2xl border border-border/70 px-4 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={search.showOpen}
-                  onChange={(event) =>
-                    navigate({
-                      to: "/scouting/responses",
-                      search: (previous) =>
-                        mergeScoutingSearch(previous, {
-                          cycleId: resolvedCycleId,
-                          showOpen: event.target.checked,
-                        }),
-                    })
-                  }
-                />
-                Include unfinished sessions
-              </label>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-            <Card className="rounded-[30px] border-border/70 shadow-sm">
-              <CardHeader>
-                <CardTitle>Responses</CardTitle>
-                <CardDescription>
-                  {responses?.length ?? 0} response{responses?.length === 1 ? "" : "s"} in the
-                  selected cycle.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {(responses ?? []).map((response) => (
-                  <button
-                    key={response._id}
-                    type="button"
-                    className={[
-                      "w-full rounded-[22px] border p-4 text-left transition-colors",
-                      selectedResponseId === String(response._id)
-                        ? "border-primary/30 bg-primary/5"
-                        : "border-border/70 bg-background/80 hover:bg-muted/40",
-                    ].join(" ")}
-                    onClick={() => setSelectedResponseId(String(response._id))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  {responseDetail.formName} · {responseDetail.cycleName} · v
+                  {responseDetail.formVersionNumber}
+                </div>
+                {responseQuestions.map((question) => (
+                  <div
+                    key={question.id}
+                    className="rounded-lg border border-border/50 p-3"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{response.formName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Team {response.selectedTeamNumber ?? "Unassigned"} | v
-                          {response.formVersionNumber}
-                        </p>
-                      </div>
-                      <span className="text-xs uppercase text-muted-foreground">
-                        {response.status}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {response.submittedAt
-                        ? `Submitted ${new Date(response.submittedAt).toLocaleString()}`
-                        : `Last autosave ${new Date(response.lastAutosavedAt).toLocaleString()}`}
+                    <p className="text-sm font-medium">{question.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {formatAnswerForDisplay(
+                        question,
+                        (responseDetail.answers as Record<string, unknown>)[question.id] as never,
+                      )}
                     </p>
-                  </button>
+                  </div>
                 ))}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[30px] border-border/70 shadow-sm">
-              <CardHeader>
-                <CardTitle>Response Detail</CardTitle>
-                <CardDescription>
-                  Review answers and the stored output from the selected session.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {responseDetail ? (
-                  <>
-                    <div className="rounded-[22px] border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-                      {responseDetail.formName} | {responseDetail.cycleName} | v
-                      {responseDetail.formVersionNumber}
-                    </div>
-                    {responseQuestions.map((question) => (
-                      <div
-                        key={question.id}
-                        className="rounded-[22px] border border-border/70 bg-background/80 p-4"
-                      >
-                        <p className="font-medium">{question.title}</p>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {formatAnswerForDisplay(
-                            question,
-                            (responseDetail.answers as Record<string, unknown>)[question.id] as never,
-                          )}
-                        </p>
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Select a response to inspect the saved answers and tag writes.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      ) : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </ScoutingFrame>
   );
 }

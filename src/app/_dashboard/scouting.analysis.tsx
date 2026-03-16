@@ -6,13 +6,7 @@ import { TagAnalysisTable } from "@/components/scouting/TagAnalysisTable";
 import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
 import { mergeScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_dashboard/scouting/analysis")({
   validateSearch: parseCycleSearch,
@@ -34,16 +28,14 @@ function ScoutingAnalysisPage() {
   const analysis = useQuery(
     api.scouting.teams.getAnalysis,
     resolvedCycleId
-      ? {
-          cycleId: resolvedCycleId as Id<"scoutingCycles">,
-        }
+      ? { cycleId: resolvedCycleId as Id<"scoutingCycles"> }
       : "skip",
   );
 
   return (
     <ScoutingFrame
-      title="Scouting Analysis"
-      description="Browse the active scouting cycle in a proper table, sort by any tag, and manage reusable filters without the old one-off controls."
+      title="Analysis"
+      description="Sort by any tag, filter from real values, and drill into team pages."
       active="analysis"
       cycleId={resolvedCycleId}
       onCycleChange={changeCycle}
@@ -51,18 +43,45 @@ function ScoutingAnalysisPage() {
       {analysis ? (
         <TagAnalysisTable cycleId={resolvedCycleId ?? analysis.cycleId} data={analysis} />
       ) : (
-        <Card className="rounded-[30px] border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle>Loading Analysis</CardTitle>
-            <CardDescription>
-              Pulling the current cycle tags and building the table view.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            This only takes a moment.
-          </CardContent>
-        </Card>
+        <AnalysisSkeleton />
       )}
     </ScoutingFrame>
+  );
+}
+
+function AnalysisSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card/90 p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32 rounded" />
+          <Skeleton className="h-5 w-48 rounded" />
+          <Skeleton className="h-3.5 w-64 rounded" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-56 rounded-lg" />
+          <Skeleton className="h-9 w-20 rounded-lg" />
+          <Skeleton className="h-9 w-24 rounded-lg" />
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border/60">
+        <div className="bg-muted/20 px-4 py-3">
+          <div className="flex gap-8">
+            <Skeleton className="h-4 w-16 rounded" />
+            <Skeleton className="h-4 w-20 rounded" />
+            <Skeleton className="h-4 w-24 rounded" />
+            <Skeleton className="h-4 w-20 rounded" />
+          </div>
+        </div>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex gap-8 border-t border-border/40 px-4 py-3">
+            <Skeleton className="h-4 w-20 rounded" />
+            <Skeleton className="h-4 w-8 rounded" />
+            <Skeleton className="h-4 w-28 rounded" />
+            <Skeleton className="h-4 w-16 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

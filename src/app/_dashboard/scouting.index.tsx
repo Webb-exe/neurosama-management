@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowRight, Search, Telescope } from "lucide-react";
+import { Search } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_dashboard/scouting/")({
   validateSearch: parseCycleSearch,
@@ -72,10 +73,7 @@ function ScoutingHomePage() {
   const handleTeamSearch = (event: React.FormEvent) => {
     event.preventDefault();
     const teamNumber = teamSearch.trim();
-    if (!teamNumber) {
-      return;
-    }
-
+    if (!teamNumber) return;
     navigate({
       to: "/scouting/team/$number",
       params: { number: teamNumber },
@@ -93,119 +91,96 @@ function ScoutingHomePage() {
     }
   };
 
+  const isLoading = cycle === undefined && resolvedCycleId;
+
   return (
     <ScoutingFrame
       title="Scouting"
-      description="Open teams quickly, monitor the current cycle, and move between analysis, responses, and forms without getting trapped in small dashboard widgets."
+      description="Monitor the current cycle and jump to teams, analysis, responses, or forms."
       active="overview"
       cycleId={resolvedCycleId}
       onCycleChange={changeCycle}
     >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_360px]">
-        <Card className="rounded-[32px] border-border/70 bg-card shadow-sm">
-          <CardHeader className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground">
-              <Telescope className="h-3.5 w-3.5 text-primary" />
-              Cycle at a glance
-            </div>
-            <CardTitle className="text-3xl">Current cycle</CardTitle>
-            <CardDescription className="max-w-2xl text-base leading-relaxed">
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        <Card className="rounded-xl border-border/60 shadow-sm">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Cycle snapshot</CardTitle>
+            <CardDescription className="text-sm">
               {cycle
-                ? `${cycle.name} is active and ready for scouting work.`
-                : "Select a cycle to load the active scouting workspace."}
+                ? `${cycle.name} — ${cycle.status}`
+                : resolvedCycleId
+                  ? "Loading cycle…"
+                  : "Select a cycle to get started."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            <StatCard
-              label="Cycle status"
-              value={cycle ? cycle.status : "None"}
-              hint={cycle ? "Selected scouting cycle" : "Choose a cycle above"}
-            />
-            <StatCard
-              label="Scouted teams"
-              value={String(analysis?.rows.length ?? 0)}
-              hint="Teams with tags or responses"
-            />
-            <StatCard
-              label="Forms"
-              value={String(forms?.length ?? 0)}
-              hint={canManage ? "Forms you can manage" : "Admin-managed forms"}
-            />
+          <CardContent className="grid gap-3 p-4 pt-0 sm:grid-cols-3">
+            {isLoading ? (
+              <>
+                <StatSkeleton />
+                <StatSkeleton />
+                <StatSkeleton />
+              </>
+            ) : (
+              <>
+                <StatCard
+                  label="Status"
+                  value={cycle ? cycle.status : "—"}
+                />
+                <StatCard
+                  label="Scouted teams"
+                  value={analysis !== undefined ? String(analysis.rows.length) : "—"}
+                />
+                <StatCard
+                  label="Forms"
+                  value={forms !== undefined ? String(forms.length) : "—"}
+                />
+              </>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="rounded-[32px] border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-2xl">Open a Team</CardTitle>
-            <CardDescription>
-              Jump straight into the team page for tags, responses, and scout link generation.
-            </CardDescription>
+        <Card className="rounded-xl border-border/60 shadow-sm">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Open a team</CardTitle>
           </CardHeader>
-          <CardContent>
-            <form className="space-y-3" onSubmit={handleTeamSearch}>
+          <CardContent className="p-4 pt-0">
+            <form className="space-y-2" onSubmit={handleTeamSearch}>
               <Input
                 type="number"
                 placeholder="Team number"
                 value={teamSearch}
                 onChange={(event) => setTeamSearch(event.target.value)}
-                className="h-12 rounded-2xl"
+                className="h-9"
               />
-              <Button type="submit" className="w-full" disabled={!teamSearch.trim()}>
-                <Search className="mr-2 h-4 w-4" />
-                View Team
+              <Button type="submit" size="sm" className="w-full" disabled={!teamSearch.trim()}>
+                <Search className="mr-1.5 h-3.5 w-3.5" />
+                View team
               </Button>
             </form>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <QuickLinkCard
-          title="Scouting Analysis"
-          description="Filter and sort teams by cycle-specific tags, then drill into the team page."
-          to="/scouting/analysis"
-          cycleId={resolvedCycleId}
-        />
-        <QuickLinkCard
-          title="Responses"
-          description="Inspect submitted and in-progress sessions with a cleaner master-detail view."
-          to="/scouting/responses"
-          cycleId={resolvedCycleId}
-        />
-        <QuickLinkCard
-          title="Forms"
-          description="Build scout forms with sections, headings, conditionals, preview, and publishing."
-          to="/scouting/forms"
-          cycleId={resolvedCycleId}
-        />
-        <QuickLinkCard
-          title="Cycles"
-          description="Create and manage the active scouting windows the team is working inside."
-          to="/scouting/cycles"
-          cycleId={resolvedCycleId}
-        />
-      </div>
-
-      {canManage ? (
-        <Card className="rounded-[28px] border-red-400/40 bg-red-50/30 shadow-sm dark:bg-red-900/10">
-          <CardHeader>
-            <CardTitle className="text-2xl text-red-700 dark:text-red-300">Scouting Danger Zone</CardTitle>
-            <CardDescription>
-              Reset all scouting data (cycles, forms, sessions, tags, and team scouting records).
-              This cannot be undone.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      {canManage && (
+        <Card className="rounded-xl border-destructive/30 shadow-sm">
+          <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-destructive">Danger zone</p>
+              <p className="text-sm text-muted-foreground">
+                Reset all scouting data. This cannot be undone.
+              </p>
+            </div>
             <Button
               variant="destructive"
+              size="sm"
               onClick={() => setResetDialogOpen(true)}
               disabled={isResetting}
             >
-              Reset All Scouting Data
+              Reset all data
             </Button>
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
@@ -223,7 +198,7 @@ function ScoutingHomePage() {
               disabled={isResetting}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isResetting ? "Resetting..." : "Reset Everything"}
+              {isResetting ? "Resetting…" : "Reset everything"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -232,49 +207,20 @@ function ScoutingHomePage() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[24px] border border-border/70 bg-background/70 p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
+    <div className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold tracking-tight">{value}</p>
     </div>
   );
 }
 
-function QuickLinkCard({
-  title,
-  description,
-  to,
-  cycleId,
-}: {
-  title: string;
-  description: string;
-  to: "/scouting/analysis" | "/scouting/responses" | "/scouting/forms" | "/scouting/cycles";
-  cycleId?: string;
-}) {
+function StatSkeleton() {
   return (
-    <Card className="rounded-[28px] border-border/70 shadow-sm">
-      <CardHeader>
-        <CardTitle className="text-2xl">{title}</CardTitle>
-        <CardDescription className="text-base leading-relaxed">{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button asChild variant="outline">
-          <Link to={to} search={getScoutingSearch(cycleId)}>
-            Open Page
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
+      <Skeleton className="h-3 w-16 rounded" />
+      <Skeleton className="mt-2 h-5 w-10 rounded" />
+    </div>
   );
 }
