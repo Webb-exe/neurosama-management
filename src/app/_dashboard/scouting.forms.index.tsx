@@ -145,7 +145,22 @@ function ScoutingFormsPage() {
                     )}
                   </div>
                 </div>
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  {form.latestPublishedVersionNumber ? (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() =>
+                        navigate({
+                          to: "/scouting/forms/$formId/links",
+                          params: { formId: String(form._id) },
+                          search: getScoutingSearch(resolvedCycleId),
+                        })
+                      }
+                    >
+                      Public links
+                    </Button>
+                  ) : null}
                   <Button
                     variant="outline"
                     size="xs"

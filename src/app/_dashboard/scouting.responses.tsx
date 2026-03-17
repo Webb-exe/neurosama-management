@@ -212,6 +212,11 @@ function ScoutingResponsesPage() {
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Team {response.selectedTeamNumber ?? "—"} · v{response.formVersionNumber}
                   </p>
+                  {response.publicLinkLabel ? (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+                      Source link: {response.publicLinkLabel}
+                    </p>
+                  ) : null}
                   <p className="mt-0.5 text-[11px] text-muted-foreground/70">
                     {response.submittedAt
                       ? new Date(response.submittedAt).toLocaleString()
@@ -246,6 +251,7 @@ function ScoutingResponsesPage() {
                 <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground">
                   {responseDetail.formName} · {responseDetail.cycleName} · v
                   {responseDetail.formVersionNumber}
+                  {responseDetail.publicLink ? ` · ${responseDetail.publicLink.label}` : ""}
                 </div>
                 {responseQuestions.map((question) => (
                   <div
