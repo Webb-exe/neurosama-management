@@ -5,6 +5,7 @@ import {
   BarChart3,
   ClipboardList,
   FileText,
+  Globe,
   Layers3,
   Flag,
 } from "lucide-react";
@@ -32,7 +33,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   title: string;
   description: string;
-  active: "overview" | "analysis" | "responses" | "forms" | "cycles";
+  active: "overview" | "analysis" | "responses" | "forms" | "publicLinks" | "cycles";
   cycleId?: string;
   onCycleChange: (cycleId: string) => void;
   children: ReactNode;
@@ -43,6 +44,7 @@ const navItems = [
   { id: "analysis", label: "Analysis", to: "/scouting/analysis", icon: BarChart3 },
   { id: "responses", label: "Responses", to: "/scouting/responses", icon: ClipboardList },
   { id: "forms", label: "Forms", to: "/scouting/forms", icon: FileText },
+  { id: "publicLinks", label: "Public Links", to: "/scouting/public-links", icon: Globe },
   { id: "cycles", label: "Cycles", to: "/scouting/cycles", icon: Layers3 },
 ] as const;
 
@@ -59,14 +61,15 @@ export function ScoutingFrame({
   const canManageForms = hasPermission(PERMISSIONS.scoutingFormsManage);
   const canManageCycles = hasPermission(PERMISSIONS.scoutingCyclesManage);
   const canViewResponses = hasPermission(PERMISSIONS.scoutingResponsesView);
+  const canManagePublicLinks = canManageForms;
   const canCreateCycles = canManageCycles;
-  const visibleNavItems = navItems.filter(
-    (item) =>
-      (item.id === "forms" && canManageForms) ||
-      (item.id === "cycles" && canManageCycles) ||
-      (item.id === "responses" && canViewResponses) ||
-      (item.id !== "forms" && item.id !== "cycles" && item.id !== "responses"),
-  );
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.id === "forms") return canManageForms;
+    if (item.id === "cycles") return canManageCycles;
+    if (item.id === "responses") return canViewResponses;
+    if (item.id === "publicLinks") return canManagePublicLinks;
+    return true;
+  });
 
   return (
     <div className="space-y-4">

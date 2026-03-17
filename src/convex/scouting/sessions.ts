@@ -17,6 +17,7 @@ import {
   requireScoutingPermission,
 } from "./lib";
 import { PERMISSIONS } from "../../lib/permissions";
+import { recordPublicLinkSubmission } from "./publicLinks";
 
 function coerceAnswers(
   questions: ScoutingQuestion[],
@@ -304,6 +305,7 @@ export const submitSession = mutation({
       submittedAt: now,
       tagWritesApplied,
     });
+    await recordPublicLinkSubmission(ctx, session, now);
 
     return {
       sessionId: session._id,
@@ -330,6 +332,8 @@ export const listResponses = query({
       formVersionNumber: v.number(),
       status: v.union(v.literal("open"), v.literal("submitted"), v.literal("closed")),
       selectedTeamNumber: v.union(v.number(), v.null()),
+      publicLinkLabel: v.union(v.string(), v.null()),
+      publicLinkPath: v.union(v.string(), v.null()),
       createdAt: v.number(),
       lastAutosavedAt: v.number(),
       submittedAt: v.union(v.number(), v.null()),
@@ -343,6 +347,9 @@ export const listResponses = query({
       .query("scoutingSessions")
       .withIndex("by_cycleId_status", (query) => query.eq("cycleId", args.cycleId))
       .collect();
+
+    const publicLinks = await ctx.db.query("scoutingPublicLinks").collect();
+    const publicLinkById = new Map(publicLinks.map((link) => [link._id, link]));
 
     return sessions
       .filter((session) => args.includeOpen || session.status === "submitted")
@@ -358,21 +365,29 @@ export const listResponses = query({
         const rightTime = right.submittedAt ?? right.lastAutosavedAt;
         return rightTime - leftTime;
       })
-      .map((session) => ({
-        _id: session._id,
-        cycleId: cycle._id,
-        cycleName: cycle.name,
-        formId: session.formId,
-        formName: session.formNameSnapshot,
-        formVersionId: session.formVersionId,
-        formVersionNumber: session.formVersionNumberSnapshot,
-        status: session.status,
-        selectedTeamNumber:
-          session.selectedTeamNumber ?? session.preselectedTeamNumber ?? null,
-        createdAt: session.createdAt,
-        lastAutosavedAt: session.lastAutosavedAt,
-        submittedAt: session.submittedAt ?? null,
-      }));
+      .map((session) => {
+        const publicLink = session.publicLinkId
+          ? publicLinkById.get(session.publicLinkId) ?? null
+          : null;
+
+        return {
+          _id: session._id,
+          cycleId: cycle._id,
+          cycleName: cycle.name,
+          formId: session.formId,
+          formName: session.formNameSnapshot,
+          formVersionId: session.formVersionId,
+          formVersionNumber: session.formVersionNumberSnapshot,
+          status: session.status,
+          selectedTeamNumber:
+            session.selectedTeamNumber ?? session.preselectedTeamNumber ?? null,
+          publicLinkLabel: publicLink?.label ?? null,
+          publicLinkPath: publicLink ? `/scouting/public/${publicLink.token}` : null,
+          createdAt: session.createdAt,
+          lastAutosavedAt: session.lastAutosavedAt,
+          submittedAt: session.submittedAt ?? null,
+        };
+      });
   },
 });
 
@@ -390,6 +405,13 @@ export const getResponseDetail = query({
     answers: v.any(),
     questions: v.any(),
     tagWritesApplied: v.any(),
+    publicLink: v.union(
+      v.object({
+        label: v.string(),
+        path: v.string(),
+      }),
+      v.null(),
+    ),
     submittedAt: v.union(v.number(), v.null()),
     lastAutosavedAt: v.number(),
   }),
@@ -403,6 +425,9 @@ export const getResponseDetail = query({
 
     const cycle = await ctx.db.get(session.cycleId);
     const version = await ctx.db.get(session.formVersionId);
+    const publicLink = session.publicLinkId
+      ? await ctx.db.get(session.publicLinkId)
+      : null;
     if (!cycle || !version) {
       throw new Error("Related scouting data not found");
     }
@@ -418,6 +443,12 @@ export const getResponseDetail = query({
       answers: session.answers,
       questions: version.questions,
       tagWritesApplied: session.tagWritesApplied,
+      publicLink: publicLink
+        ? {
+            label: publicLink.label,
+            path: `/scouting/public/${publicLink.token}`,
+          }
+        : null,
       submittedAt: session.submittedAt ?? null,
       lastAutosavedAt: session.lastAutosavedAt,
     };
