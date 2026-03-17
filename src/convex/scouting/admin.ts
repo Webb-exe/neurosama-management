@@ -6,6 +6,8 @@ import { requireAdminUser } from "./lib";
 const RESET_BATCH_SIZE = 100;
 const RESET_TABLES = [
   "scoutingSessions",
+  "scoutingPublicLinkTeams",
+  "scoutingPublicLinks",
   "cycleTeamScouting",
   "scoutingTagDefinitions",
   "scoutingFormVersions",
@@ -15,6 +17,8 @@ const RESET_TABLES = [
 
 const resetTableValidator = v.union(
   v.literal("scoutingSessions"),
+  v.literal("scoutingPublicLinkTeams"),
+  v.literal("scoutingPublicLinks"),
   v.literal("cycleTeamScouting"),
   v.literal("scoutingTagDefinitions"),
   v.literal("scoutingFormVersions"),

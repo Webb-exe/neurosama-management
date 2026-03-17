@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle2, Copy, Eye, LoaderCircle, SendHorizontal } from "lucide-react";
+import { CheckCircle2, Copy, Eye, Globe, LoaderCircle, SendHorizontal } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { FormBuilder } from "@/components/scouting/FormBuilder";
@@ -297,6 +297,21 @@ function ScoutingFormDetailPage() {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
+                      onClick={() =>
+                        navigate({
+                          to: "/scouting/forms/$formId/links" as never,
+                          params: { formId: String(formId) } as never,
+                          search: mergeScoutingSearch(search, {
+                            cycleId: resolvedCycleId ?? undefined,
+                          }) as never,
+                        })
+                      }
+                    >
+                      <Globe className="mr-2 h-4 w-4" />
+                      Public Links
+                    </Button>
+                    <Button
+                      variant="outline"
                       onClick={async () => {
                         setSaveState("saving");
                         try {
@@ -486,10 +501,10 @@ function ScoutingFormDetailPage() {
 
               <Card className="rounded-[28px] border-border/70 shadow-sm">
                 <CardHeader>
-                  <CardTitle>Generate Scout Link</CardTitle>
+                  <CardTitle>Generate One-Time Scout Link</CardTitle>
                   <CardDescription>
-                    Creates a one-time link against the current active cycle and latest published
-                    version.
+                    Creates a single session immediately. Use Public Links above for reusable links
+                    that ask for a team number first and track per-team usage.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">

@@ -467,6 +467,7 @@ function ScoutingTeamPage() {
               <div className="rounded-lg border border-border/50 bg-muted/30 p-2.5 text-xs text-muted-foreground">
                 {responseDetail.formName} · {responseDetail.cycleName} · v
                 {responseDetail.formVersionNumber}
+                {responseDetail.publicLink ? ` · ${responseDetail.publicLink.label}` : ""}
               </div>
               {responseQuestions.map((question) => (
                 <div key={question.id} className="rounded-lg border border-border/50 p-2.5">
