@@ -192,7 +192,9 @@ function ScoutingTeamPage() {
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{key}</p>
-                        <p className="truncate text-xs text-muted-foreground">{value}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {String(value)}
+                        </p>
                       </div>
                       {canManageTags && resolvedCycleId && (
                         <Button

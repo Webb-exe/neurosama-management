@@ -21,8 +21,8 @@ type Ctx = QueryCtx | MutationCtx;
 function toApprovedUser(user: {
   _id: Id<"users">;
   clerkInfoId: Id<"clerkInfo">;
-  isOwner: boolean;
-  roles: readonly string[];
+  isOwner?: boolean | undefined;
+  roles?: readonly string[] | undefined;
 }) {
   const normalizedUser = normalizePermissionUser(user);
   if (!normalizedUser) {

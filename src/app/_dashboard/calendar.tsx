@@ -796,7 +796,7 @@ function CalendarPage() {
     if (!events) return new Map<string, CalendarEvent[]>();
 
     const map = new Map<string, CalendarEvent[]>();
-    events.forEach((event) => {
+    events.forEach((event: CalendarEvent) => {
       // Get start and end date keys in the selected timezone
       const startDateKey = getDateKeyInTimezone(event.startDate, timezone);
       const endDateKey = getDateKeyInTimezone(event.endDate, timezone);

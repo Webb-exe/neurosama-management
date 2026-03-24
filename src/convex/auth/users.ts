@@ -2,10 +2,11 @@ import { query, mutation, internalQuery, internalMutation } from "../functions";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { clerkUserInfoValidator } from "./clerk";
 import {
-  APP_ROLES,
   sortAppRoles,
+  normalizePermissionUser,
   type AppRole,
 } from "../../lib/permissions";
 import {
@@ -107,16 +108,20 @@ const approvedUserShape = v.object({
 });
 
 function normalizeApprovedUserRecord(user: {
-  _id: string;
-  clerkInfoId: string;
-  isOwner: boolean;
-  roles: readonly AppRole[];
+  _id: Id<"users">;
+  clerkInfoId: Id<"clerkInfo">;
+  isOwner?: boolean | undefined;
+  roles?: readonly string[] | undefined;
 }) {
+  const normalized = normalizePermissionUser(user);
+  if (!normalized) {
+    throw new Error("Invalid user record");
+  }
   return {
     _id: user._id,
     clerkInfoId: user.clerkInfoId,
-    isOwner: user.isOwner,
-    roles: sortAppRoles(Array.from(new Set(user.roles))),
+    isOwner: normalized.isOwner,
+    roles: sortAppRoles(Array.from(new Set(normalized.roles))),
   };
 }
 

@@ -2,9 +2,18 @@ import { internalQuery, query, mutation, QueryCtx, MutationCtx } from "../_gener
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
-import { PERMISSIONS, normalizePermissionUser, userHasPermission } from "../../lib/permissions";
+import { PERMISSIONS, userHasPermission, type AppRole } from "../../lib/permissions";
 
-async function getCurrentAuthUser(ctx: QueryCtx | MutationCtx) {
+type CurrentAuthUser = {
+  clerkInfoId: Id<"clerkInfo">;
+  userId: Id<"users">;
+  isOwner: boolean;
+  roles: AppRole[];
+};
+
+async function getCurrentAuthUser(
+  ctx: QueryCtx | MutationCtx,
+): Promise<CurrentAuthUser | null> {
   return await ctx.runQuery(internal.auth.helpers.getCurrentUser, {});
 }
 

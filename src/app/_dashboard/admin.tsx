@@ -31,6 +31,7 @@ import {
 import {
   MoreVertical,
   UserMinus,
+  UserCheck,
   Settings,
   Users,
   Trophy,

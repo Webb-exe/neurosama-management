@@ -17,7 +17,12 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useTimezone, COMMON_TIMEZONES } from "@/context/TimezoneContext";
-import { PERMISSIONS, formatUserRoleSummary } from "@/lib/permissions";
+import {
+  PERMISSIONS,
+  formatUserRoleSummary,
+  type Permission,
+  type PermissionKey,
+} from "@/lib/permissions";
 import {
   Popover,
   PopoverContent,
@@ -101,7 +106,7 @@ function NavLinks({
   hasPermission,
   onNavigate,
 }: {
-  hasPermission: (permission: keyof typeof PERMISSIONS) => boolean;
+  hasPermission: (permission: Permission | PermissionKey) => boolean;
   onNavigate?: () => void;
 }) {
   const location = useLocation();
@@ -122,7 +127,7 @@ function NavLinks({
             <Separator className="my-3 bg-border/50" />
           )}
           {section.items.map((item) => {
-            if (item.permission && !hasPermission(item.permission)) {
+            if (item.permission && !hasPermission(PERMISSIONS[item.permission])) {
               if (!item.requiresTeamLeader) {
                 return null;
               }

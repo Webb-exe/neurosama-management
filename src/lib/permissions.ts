@@ -7,12 +7,6 @@ export const APP_ROLES = [
 
 export type AppRole = (typeof APP_ROLES)[number];
 
-export type Permission = {
-  key: PermissionKey;
-  label: string;
-  description: string;
-};
-
 export const PERMISSIONS = {
   adminAccess: {
     key: "admin.access",
@@ -114,9 +108,16 @@ export const PERMISSIONS = {
     label: "Reset scouting data",
     description: "Delete all stored scouting data.",
   },
-} as const satisfies Record<string, Permission>;
+} as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]["key"];
+
+export type Permission = {
+  key: PermissionKey;
+  label: string;
+  description: string;
+};
+
 export const ALL_PERMISSION_KEYS = Object.values(PERMISSIONS).map(
   (permission) => permission.key,
 ) as PermissionKey[];

@@ -1,6 +1,12 @@
+import type { CustomCtx } from "convex-helpers/server/customFunctions";
 import { internalQuery } from "../functions";
 import { v } from "convex/values";
-import { PERMISSIONS, normalizePermissionUser, userHasPermission } from "../../lib/permissions";
+import {
+  PERMISSIONS,
+  normalizePermissionUser,
+  userHasPermission,
+  type PermissionKey,
+} from "../../lib/permissions";
 import {
   authUserValidator,
   permissionKeyValidator,
@@ -10,9 +16,9 @@ import {
 // AUTH HELPER QUERIES
 // ============================================================================
 
-async function lookupAuthUser(
-  ctx: Parameters<typeof getCurrentUser["handler"]>[0],
-) {
+type InternalQueryCtx = CustomCtx<typeof internalQuery>;
+
+async function lookupAuthUser(ctx: InternalQueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     return null;
@@ -65,7 +71,7 @@ export const hasPermission = internalQuery({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const user = await ctx.table("users").get(args.userId);
-    return userHasPermission(user, args.permission);
+    return userHasPermission(user, args.permission as PermissionKey);
   },
 });
 
@@ -98,7 +104,7 @@ export const requirePermission = internalQuery({
       throw new Error("Not authenticated");
     }
 
-    if (!userHasPermission(authUser, args.permission)) {
+    if (!userHasPermission(authUser, args.permission as PermissionKey)) {
       throw new Error(`Not authorized - ${args.permission} required`);
     }
 
