@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 
 export const Route = createFileRoute("/_dashboard/scouting/team/$number")({
   validateSearch: parseCycleSearch,
@@ -143,13 +143,9 @@ function ScoutingTeamPage() {
             <MiniStat label="EG OPR" value={fmt(quickStats.eg.value)} hint={`#${quickStats.eg.rank}`} />
           </>
         ) : (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
-              <Skeleton className="h-3 w-14 rounded" />
-              <Skeleton className="mt-2 h-5 w-10 rounded" />
-              <Skeleton className="mt-1.5 h-2.5 w-8 rounded" />
-            </div>
-          ))
+          <div className="col-span-full">
+            <ScoutingLoading message="Loading stats…" variant="inline" />
+          </div>
         )}
       </div>
 
@@ -164,11 +160,7 @@ function ScoutingTeamPage() {
             </CardHeader>
             <CardContent className="p-4 pt-0">
               {teamSummary === undefined ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-10 w-full rounded-lg" />
-                  ))}
-                </div>
+                <ScoutingLoading message="Loading tags…" variant="inline" />
               ) : Object.keys(teamSummary.team.tags).length > 0 ? (
                 <div className="space-y-1.5">
                   {Object.entries(teamSummary.team.tags).map(([key, value]) => (
@@ -217,11 +209,7 @@ function ScoutingTeamPage() {
               </CardHeader>
               <CardContent className="p-4 pt-0">
                 {teamSummary === undefined ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                      <Skeleton key={i} className="h-20 w-full rounded-lg" />
-                    ))}
-                  </div>
+                  <ScoutingLoading message="Loading responses…" variant="inline" />
                 ) : teamSummary.responses.length === 0 ? (
                   <p className="py-3 text-center text-sm text-muted-foreground">
                     No responses in this cycle.
@@ -376,11 +364,7 @@ function ScoutingTeamPage() {
             </CardHeader>
             <CardContent className="p-4 pt-0">
               {teamPage.data == null ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
-                  ))}
-                </div>
+                <ScoutingLoading message="Loading events…" variant="inline" />
               ) : teamPage.data.events.length > 0 ? (
                 <div className="space-y-1.5">
                   {teamPage.data.events.map((entry) => (
@@ -417,11 +401,7 @@ function ScoutingTeamPage() {
             </CardHeader>
             <CardContent className="space-y-1 p-4 pt-0 text-xs text-muted-foreground">
               {teamPage.data == null ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-3 w-32 rounded" />
-                  <Skeleton className="h-3 w-24 rounded" />
-                  <Skeleton className="h-3 w-40 rounded" />
-                </div>
+                <ScoutingLoading message="Loading team info…" variant="inline" />
               ) : (
                 <>
                   <p>Rookie year: {teamPage.data.rookieYear ?? "Unknown"}</p>
@@ -484,12 +464,7 @@ function ScoutingTeamPage() {
               ))}
             </div>
           ) : (
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-full rounded-lg" />
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-lg" />
-              ))}
-            </div>
+            <ScoutingLoading message="Loading response…" variant="inline" />
           )}
         </DialogContent>
       </Dialog>

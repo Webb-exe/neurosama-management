@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle2, CloudOff, LoaderCircle, ShieldCheck } from "lucide-react";
 import { api } from "@/convex/_generated/api";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 import { FormRenderer } from "@/components/scouting/FormRenderer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -194,13 +195,7 @@ function PublicScoutingSessionPage() {
   ]);
 
   if (!session) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-12">
-          <p className="text-sm text-muted-foreground">Loading scouting session...</p>
-        </div>
-      </div>
-    );
+    return <ScoutingLoading message="Loading scouting session…" variant="page" />;
   }
 
   if (session.status === "invalid") {

@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { LoaderCircle, ShieldCheck } from "lucide-react";
 import { api } from "@/convex/_generated/api";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,11 +27,7 @@ function PublicScoutingLinkPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!link) {
-    return (
-      <CenteredCard title="Loading link">
-        <p className="text-sm text-muted-foreground">Preparing the public form link...</p>
-      </CenteredCard>
-    );
+    return <ScoutingLoading message="Preparing the public form link…" variant="page" />;
   }
 
   if (link.status === "invalid") {

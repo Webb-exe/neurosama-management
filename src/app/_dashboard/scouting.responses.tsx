@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_dashboard/scouting/responses")({
@@ -168,9 +168,7 @@ function ScoutingResponsesPage() {
           </CardHeader>
           <CardContent className="space-y-1.5 p-3 pt-0">
             {responses === undefined ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))
+              <ScoutingLoading message="Loading responses…" variant="inline" />
             ) : responses.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
                 No responses match these filters.
@@ -225,12 +223,7 @@ function ScoutingResponsesPage() {
                 Select a response on the left to view answers.
               </p>
             ) : responseDetail === undefined ? (
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-full rounded-lg" />
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                ))}
-              </div>
+              <ScoutingLoading message="Loading response…" variant="inline" />
             ) : (
               <div className="space-y-2">
                 <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-xs text-muted-foreground">

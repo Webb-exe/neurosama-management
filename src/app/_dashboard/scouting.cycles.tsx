@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 
 export const Route = createFileRoute("/_dashboard/scouting/cycles")({
   validateSearch: parseCycleSearch,
@@ -76,9 +76,7 @@ function ScoutingCyclesPage() {
 
       <div className="space-y-2">
         {cycles === undefined ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-xl" />
-          ))
+          <ScoutingLoading message="Loading cycles…" variant="inline" />
         ) : cycles.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             No cycles yet. Create the first one above.

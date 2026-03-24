@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 import { PERMISSIONS, userHasPermission } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_dashboard/scouting/")({
@@ -104,11 +104,9 @@ function ScoutingHomePage() {
           </CardHeader>
           <CardContent className="grid gap-3 p-4 pt-0 sm:grid-cols-3">
             {isLoading ? (
-              <>
-                <StatSkeleton />
-                <StatSkeleton />
-                <StatSkeleton />
-              </>
+              <div className="col-span-full">
+                <ScoutingLoading message="Loading cycle…" variant="inline" />
+              </div>
             ) : (
               <>
                 <StatCard
@@ -205,11 +203,3 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatSkeleton() {
-  return (
-    <div className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
-      <Skeleton className="h-3 w-16 rounded" />
-      <Skeleton className="mt-2 h-5 w-10 rounded" />
-    </div>
-  );
-}

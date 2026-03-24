@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 
 export const Route = createFileRoute("/_dashboard/scouting/forms/")({
   validateSearch: parseCycleSearch,
@@ -79,11 +79,7 @@ function ScoutingFormsPage() {
       </Card>
 
       {forms === undefined ? (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full rounded-xl" />
-          ))}
-        </div>
+        <ScoutingLoading message="Loading forms…" variant="inline" />
       ) : forms.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 py-10 text-center">
           <p className="text-sm text-muted-foreground">No forms yet. Create the first one above.</p>

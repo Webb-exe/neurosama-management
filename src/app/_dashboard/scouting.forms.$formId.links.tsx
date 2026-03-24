@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { PublicLinkCard } from "@/components/scouting/PublicLinkCard";
+import { ScoutingLoading } from "@/components/scouting/ScoutingLoading";
 import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
 import { parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
@@ -345,11 +346,7 @@ function ScoutingFormPublicLinksPage() {
           </Badge>
         </div>
         {publicLinks === undefined ? (
-          <Card className="rounded-2xl">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              Loading public links...
-            </CardContent>
-          </Card>
+          <ScoutingLoading message="Loading public links…" variant="inline" />
         ) : publicLinks.length === 0 ? (
           <Card className="rounded-2xl border-dashed">
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
