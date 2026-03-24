@@ -11,11 +11,19 @@ import { useQuery, useMutation } from "convex/react";
 import { useAuth, useClerk } from "@clerk/tanstack-react-start";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
+import {
+  formatUserRoleSummary,
+  type AppRole,
+  type Permission,
+  type PermissionKey,
+  userHasPermission,
+} from "@/lib/permissions";
 
 type User = {
   _id: Id<"users">;
   clerkInfoId: Id<"clerkInfo">;
-  role: "owner" | "admin" | "member";
+  isOwner: boolean;
+  roles: AppRole[];
 };
 
 type AuthStatus =
@@ -32,9 +40,10 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isApproved: boolean;
   user: User | null;
+  hasPermission: (permission: Permission | PermissionKey) => boolean;
+  roleSummary: string;
   refreshAuth: () => Promise<void>;
   clerkInfo: ReturnType<typeof useClerk>["user"];
-
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,6 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = isSignedIn === true;
   const isApproved = authStatus.status === "approved";
   const user = authStatus.status === "approved" ? authStatus.user : null;
+  const roleSummary = formatUserRoleSummary(user);
+  const hasPermission = useCallback(
+    (permission: Permission | PermissionKey) => userHasPermission(user, permission),
+    [user],
+  );
 
   return (
     <AuthContext.Provider
@@ -145,6 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         isApproved,
         user,
+        hasPermission,
+        roleSummary,
         refreshAuth,
         clerkInfo,
       }}

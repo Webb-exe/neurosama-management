@@ -11,6 +11,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import { getScoutingSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
 import {
   Card,
   CardContent,
@@ -54,11 +55,17 @@ export function ScoutingFrame({
   children,
 }: Props) {
   const cycles = useQuery(api.scouting.cycles.listCycles, {});
-  const { user } = useAuthContext();
-  const canManage = user?.role === "owner" || user?.role === "admin";
+  const { hasPermission } = useAuthContext();
+  const canManageForms = hasPermission(PERMISSIONS.scoutingFormsManage);
+  const canManageCycles = hasPermission(PERMISSIONS.scoutingCyclesManage);
+  const canViewResponses = hasPermission(PERMISSIONS.scoutingResponsesView);
+  const canCreateCycles = canManageCycles;
   const visibleNavItems = navItems.filter(
     (item) =>
-      canManage || (item.id !== "forms" && item.id !== "cycles" && item.id !== "responses"),
+      (item.id === "forms" && canManageForms) ||
+      (item.id === "cycles" && canManageCycles) ||
+      (item.id === "responses" && canViewResponses) ||
+      (item.id !== "forms" && item.id !== "cycles" && item.id !== "responses"),
   );
 
   return (
@@ -120,7 +127,7 @@ export function ScoutingFrame({
             <CardTitle className="text-base">No Scouting Cycles</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
-            {canManage
+            {canCreateCycles
               ? "Create a cycle on the Cycles page to start collecting scouting data."
               : "Ask an admin to create a scouting cycle before using scouting."}
           </CardContent>

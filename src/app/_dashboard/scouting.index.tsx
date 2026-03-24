@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PERMISSIONS, userHasPermission } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_dashboard/scouting/")({
   validateSearch: parseCycleSearch,
@@ -42,7 +43,8 @@ function ScoutingHomePage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const { user } = useAuthContext();
-  const canManage = user?.role === "owner" || user?.role === "admin";
+  const canManage = userHasPermission(user, PERMISSIONS.scoutingFormsManage);
+  const canReset = userHasPermission(user, PERMISSIONS.scoutingReset);
   const [teamSearch, setTeamSearch] = useState(search.teamNumber ?? "");
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -161,7 +163,7 @@ function ScoutingHomePage() {
         </Card>
       </div>
 
-      {canManage && (
+      {canReset && (
         <Card className="rounded-xl border-destructive/30 shadow-sm">
           <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

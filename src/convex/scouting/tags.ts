@@ -3,9 +3,10 @@ import { mutation, query } from "../_generated/server";
 import {
   ensureTagDefinition,
   getOrCreateCycleTeamRecord,
-  requireAdminUser,
   requireApprovedUser,
+  requireScoutingPermission,
 } from "./lib";
+import { PERMISSIONS } from "../../lib/permissions";
 
 export const listTagDefinitions = query({
   args: {},
@@ -45,7 +46,7 @@ export const getTagValueSuggestions = query({
   },
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
-    await requireApprovedUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingTeamManageTags.key);
 
     const teamRecords = await ctx.db
       .query("cycleTeamScouting")
@@ -84,7 +85,7 @@ export const upsertManualTeamTag = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingTeamManageTags.key);
     const key = args.key.trim();
     const value = args.value.trim();
 
@@ -115,7 +116,7 @@ export const deleteManualTeamTag = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingTeamManageTags.key);
     const record = await ctx.db
       .query("cycleTeamScouting")
       .withIndex("by_cycleId_teamNumber", (query) =>
@@ -146,7 +147,7 @@ export const updateTagDefinition = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingTeamManageTags.key);
     const definition = await ctx.db.get(args.tagDefinitionId);
     if (!definition) {
       throw new Error("Tag definition not found");

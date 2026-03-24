@@ -11,6 +11,7 @@ import {
 } from "@/components/scouting/search";
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,8 +31,8 @@ export const Route = createFileRoute("/_dashboard/scouting/forms/")({
 function ScoutingFormsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { user } = useAuthContext();
-  const canManage = user?.role === "owner" || user?.role === "admin";
+  const { hasPermission } = useAuthContext();
+  const canManage = hasPermission(PERMISSIONS.scoutingFormsManage);
   const forms = useQuery(api.scouting.forms.listForms, canManage ? {} : "skip");
   const createForm = useMutation(api.scouting.forms.createForm);
   const [newFormName, setNewFormName] = useState("");
@@ -59,7 +60,7 @@ function ScoutingFormsPage() {
             <CardTitle className="text-base">Not authorized</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
-            Only admins can create and edit scouting forms.
+            You do not have permission to create or edit scouting forms.
           </CardContent>
         </Card>
       </ScoutingFrame>

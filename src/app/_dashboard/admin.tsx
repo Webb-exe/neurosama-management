@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -30,15 +30,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   MoreVertical,
-  Shield,
   UserMinus,
   Settings,
   Users,
-  UserCheck,
   Trophy,
   RefreshCw,
 } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
+import {
+  APP_ROLE_LABELS,
+  APP_ROLES,
+  PERMISSIONS,
+  formatUserRoleSummary,
+  type AppRole,
+} from "@/lib/permissions";
 
 export const Route = createFileRoute("/_dashboard/admin")({
   component: AdminPage,
@@ -51,13 +56,21 @@ function UsersTab() {
     { initialNumItems: 20 }
   );
 
-  const updateUserRole = useMutation(api.auth.users.updateUserRole);
+  const updateUserRoles = useMutation(api.auth.users.updateUserRoles);
   const removeUser = useMutation(api.auth.users.removeUser);
 
   const [removeUserId, setRemoveUserId] = useState<Id<"users"> | null>(null);
 
-  const handleRoleChange = async (userId: Id<"users">, role: "admin" | "member") => {
-    await updateUserRole({ userId, role });
+  const handleRoleToggle = async (
+    userId: Id<"users">,
+    roles: readonly AppRole[],
+    role: AppRole,
+    checked: boolean,
+  ) => {
+    const nextRoles = checked
+      ? [...roles, role]
+      : roles.filter((currentRole) => currentRole !== role);
+    await updateUserRoles({ userId, roles: nextRoles });
   };
 
   const handleRemoveUser = async () => {
@@ -127,12 +140,12 @@ function UsersTab() {
 
                 <div className="flex items-center gap-2">
                   <Badge
-                    variant={user.role === "owner" ? "default" : "secondary"}
+                    variant={user.isOwner ? "default" : "secondary"}
                   >
-                    {user.role}
+                    {formatUserRoleSummary(user)}
                   </Badge>
 
-                  {user.role !== "owner" && (
+                  {!user.isOwner && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -140,30 +153,26 @@ function UsersTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {user.role === "member" && (
-                          <DropdownMenuItem
-                            onClick={() => handleRoleChange(user._id, "admin")}
+                        {APP_ROLES.map((role) => (
+                          <DropdownMenuCheckboxItem
+                            key={role}
+                            checked={user.roles.includes(role)}
+                            onCheckedChange={(checked) =>
+                              handleRoleToggle(user._id, user.roles, role, checked === true)
+                            }
                           >
-                            <Shield className="h-4 w-4 mr-2" />
-                            Make Admin
-                          </DropdownMenuItem>
-                        )}
-                        {user.role === "admin" && (
-                          <DropdownMenuItem
-                            onClick={() => handleRoleChange(user._id, "member")}
-                          >
-                            <UserCheck className="h-4 w-4 mr-2" />
-                            Make Member
-                          </DropdownMenuItem>
-                        )}
+                            {APP_ROLE_LABELS[role]}
+                          </DropdownMenuCheckboxItem>
+                        ))}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
+                        <button
+                          type="button"
                           onClick={() => setRemoveUserId(user._id)}
-                          className="text-red-600"
+                          className="focus:bg-accent focus:text-accent-foreground text-red-600 data-[variant=destructive]:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 rounded-sm px-2 py-1.5 text-sm relative flex w-full cursor-default items-center gap-2 outline-hidden select-none"
                         >
                           <UserMinus className="h-4 w-4 mr-2" />
                           Remove User
-                        </DropdownMenuItem>
+                        </button>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
@@ -477,14 +486,15 @@ function SettingsTab() {
 }
 
 function AdminPage() {
-  const { user, isLoading } = useAuthContext();
+  const { user, isLoading, hasPermission } = useAuthContext();
   const navigate = useNavigate();
+  const canAccessAdmin = hasPermission(PERMISSIONS.adminAccess);
 
   useEffect(() => {
-    if (!isLoading && user && user.role !== "owner" && user.role !== "admin") {
+    if (!isLoading && user && !canAccessAdmin) {
       navigate({ to: "/" });
     }
-  }, [isLoading, user, navigate]);
+  }, [canAccessAdmin, isLoading, user, navigate]);
 
   if (isLoading || !user) {
     return (
@@ -495,7 +505,7 @@ function AdminPage() {
     );
   }
 
-  if (user.role !== "owner" && user.role !== "admin") {
+  if (!canAccessAdmin) {
     return null;
   }
 

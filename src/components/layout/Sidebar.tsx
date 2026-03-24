@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useTimezone, COMMON_TIMEZONES } from "@/context/TimezoneContext";
+import { PERMISSIONS, formatUserRoleSummary } from "@/lib/permissions";
 import {
   Popover,
   PopoverContent,
@@ -34,7 +35,7 @@ type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  visibleTo: ("owner" | "admin" | "member")[];
+  permission?: keyof typeof PERMISSIONS;
   requiresTeamLeader?: boolean;
 };
 
@@ -50,25 +51,22 @@ const navSections: NavSection[] = [
         href: "/",
         label: "Dashboard",
         icon: Home,
-        visibleTo: ["owner", "admin", "member"],
       },
       {
         href: "/calendar",
         label: "Calendar",
         icon: CalendarDays,
-        visibleTo: ["owner", "admin", "member"],
       },
       {
         href: "/events",
         label: "Team Events",
         icon: Trophy,
-        visibleTo: ["owner", "admin", "member"],
       },
       {
         href: "/scouting",
         label: "Scouting",
         icon: Search,
-        visibleTo: ["owner", "admin", "member"],
+        permission: "scoutingView",
       },
     ],
   },
@@ -79,13 +77,11 @@ const navSections: NavSection[] = [
         href: "/projects",
         label: "Projects",
         icon: FolderKanban,
-        visibleTo: ["owner", "admin", "member"],
       },
       {
         href: "/tasks",
         label: "My Tasks",
         icon: CheckSquare,
-        visibleTo: ["owner", "admin", "member"],
       },
     ],
   },
@@ -95,17 +91,17 @@ const navSections: NavSection[] = [
         href: "/admin",
         label: "Admin",
         icon: Settings,
-        visibleTo: ["owner", "admin"],
+        permission: "adminAccess",
       },
     ],
   },
 ];
 
 function NavLinks({
-  userRole,
+  hasPermission,
   onNavigate,
 }: {
-  userRole: "owner" | "admin" | "member";
+  hasPermission: (permission: keyof typeof PERMISSIONS) => boolean;
   onNavigate?: () => void;
 }) {
   const location = useLocation();
@@ -126,9 +122,7 @@ function NavLinks({
             <Separator className="my-3 bg-border/50" />
           )}
           {section.items.map((item) => {
-            // Check visibility based on role
-            if (!item.visibleTo.includes(userRole)) {
-              // For team leader items, show to all but will be filtered by backend
+            if (item.permission && !hasPermission(item.permission)) {
               if (!item.requiresTeamLeader) {
                 return null;
               }
@@ -245,7 +239,7 @@ function TimezoneSelector() {
 }
 
 export function DesktopSidebar() {
-  const { user, clerkInfo } = useAuthContext();
+  const { user, clerkInfo, hasPermission } = useAuthContext();
 
   if (!user) {
     return null;
@@ -259,7 +253,7 @@ export function DesktopSidebar() {
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto p-3">
-        <NavLinks userRole={user.role} />
+        <NavLinks hasPermission={hasPermission} />
       </div>
       <div className="border-t border-border/50 p-4 space-y-3">
         <TimezoneSelector />
@@ -282,7 +276,7 @@ export function DesktopSidebar() {
                 : clerkInfo?.emailAddresses?.[0]?.emailAddress}
             </p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-              {user.role}
+              {formatUserRoleSummary(user)}
             </p>
           </div>
         </div>
@@ -292,7 +286,7 @@ export function DesktopSidebar() {
 }
 
 export function MobileSidebar() {
-  const { user, clerkInfo } = useAuthContext();
+  const { user, clerkInfo, hasPermission } = useAuthContext();
   const [open, setOpen] = useState(false);
 
   if (!user) {
@@ -323,7 +317,7 @@ export function MobileSidebar() {
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto p-3">
-          <NavLinks userRole={user.role} onNavigate={() => setOpen(false)} />
+          <NavLinks hasPermission={hasPermission} onNavigate={() => setOpen(false)} />
         </div>
         <div className="border-t border-border/50 p-4 space-y-3">
           <TimezoneSelector />
@@ -346,7 +340,7 @@ export function MobileSidebar() {
                   : clerkInfo?.emailAddresses?.[0]?.emailAddress}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                {user.role}
+                {formatUserRoleSummary(user)}
               </p>
             </div>
           </div>

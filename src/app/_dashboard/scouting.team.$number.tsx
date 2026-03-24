@@ -17,6 +17,7 @@ import {
 } from "@/components/scouting/search";
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
 import { useFtcScoutTeamPage } from "@/lib/ftcScout/hooks";
 import {
   formatAnswerForDisplay,
@@ -60,8 +61,12 @@ function ScoutingTeamPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const teamNumber = Number(params.number);
-  const { user } = useAuthContext();
-  const canManage = user?.role === "owner" || user?.role === "admin";
+  const { hasPermission } = useAuthContext();
+  const canManageTags = hasPermission(PERMISSIONS.scoutingTeamManageTags);
+  const canViewResponses = hasPermission(PERMISSIONS.scoutingTeamViewResponses);
+  const canViewResponseDetail = hasPermission(PERMISSIONS.scoutingResponsesView);
+  const canViewPublishedForms = hasPermission(PERMISSIONS.scoutingPublishedFormsView);
+  const canCreateTeamSessions = hasPermission(PERMISSIONS.scoutingSessionCreateTeam);
   const [manualTagKey, setManualTagKey] = useState("");
   const [manualTagValue, setManualTagValue] = useState("");
   const [selectedFormId, setSelectedFormId] = useState("");
@@ -84,16 +89,21 @@ function ScoutingTeamPage() {
       ? { cycleId: resolvedCycleId as Id<"scoutingCycles">, teamNumber }
       : "skip",
   );
-  const forms = useQuery(api.scouting.forms.listPublishedForms, canManage ? {} : "skip");
+  const forms = useQuery(
+    api.scouting.forms.listPublishedForms,
+    canViewPublishedForms ? {} : "skip",
+  );
   const suggestions = useQuery(
     api.scouting.tags.getTagValueSuggestions,
-    canManage && resolvedCycleId && manualTagKey.trim()
+    canManageTags && resolvedCycleId && manualTagKey.trim()
       ? { cycleId: resolvedCycleId as Id<"scoutingCycles">, key: manualTagKey.trim() }
       : "skip",
   );
   const responseDetail = useQuery(
     api.scouting.sessions.getResponseDetail,
-    canManage && selectedResponseId ? { sessionId: selectedResponseId } : "skip",
+    canViewResponseDetail && selectedResponseId
+      ? { sessionId: selectedResponseId }
+      : "skip",
   );
 
   const upsertManualTeamTag = useMutation(api.scouting.tags.upsertManualTeamTag);
@@ -184,7 +194,7 @@ function ScoutingTeamPage() {
                         <p className="text-sm font-medium">{key}</p>
                         <p className="truncate text-xs text-muted-foreground">{value}</p>
                       </div>
-                      {canManage && resolvedCycleId && (
+                      {canManageTags && resolvedCycleId && (
                         <Button
                           variant="ghost"
                           size="xs"
@@ -251,7 +261,7 @@ function ScoutingTeamPage() {
                           : `Autosaved ${new Date(response.lastAutosavedAt).toLocaleString()}`}
                       </p>
                       <div className="mt-2 flex gap-1.5">
-                        {canManage && (
+                        {canViewResponseDetail && (
                           <Button
                             variant="outline"
                             size="xs"
@@ -278,92 +288,94 @@ function ScoutingTeamPage() {
 
         {/* Right sidebar */}
         <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-          {canManage && (
+          {(canManageTags || canCreateTeamSessions) && (
             <>
-              {/* Manual tag */}
-              <Card className="rounded-xl border-border/60 shadow-sm">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Add tag</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 p-4 pt-0">
-                  <Input
-                    placeholder="Key"
-                    value={manualTagKey}
-                    onChange={(event) => setManualTagKey(event.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <Input
-                    list="tag-suggestions"
-                    placeholder="Value"
-                    value={manualTagValue}
-                    onChange={(event) => setManualTagValue(event.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <datalist id="tag-suggestions">
-                    {(suggestions ?? []).map((s) => (
-                      <option key={s} value={s} />
-                    ))}
-                  </datalist>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    disabled={!resolvedCycleId || !manualTagKey.trim()}
-                    onClick={async () => {
-                      await upsertManualTeamTag({
-                        cycleId: resolvedCycleId as Id<"scoutingCycles">,
-                        teamNumber,
-                        key: manualTagKey,
-                        value: manualTagValue,
-                      });
-                      setManualTagKey("");
-                      setManualTagValue("");
-                    }}
-                  >
-                    Save tag
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Generate link */}
-              <Card className="rounded-xl border-border/60 shadow-sm">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Scout link</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 p-4 pt-0">
-                  <Select
-                    value={selectedFormId || "__none__"}
-                    onValueChange={(v) => setSelectedFormId(v === "__none__" ? "" : v)}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Choose form" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Choose a form</SelectItem>
-                      {(forms ?? []).map((form) => (
-                        <SelectItem key={form._id} value={form._id}>
-                          {form.name}
-                        </SelectItem>
+              {canManageTags ? (
+                <Card className="rounded-xl border-border/60 shadow-sm">
+                  <CardHeader className="p-4 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Add tag</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 p-4 pt-0">
+                    <Input
+                      placeholder="Key"
+                      value={manualTagKey}
+                      onChange={(event) => setManualTagKey(event.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <Input
+                      list="tag-suggestions"
+                      placeholder="Value"
+                      value={manualTagValue}
+                      onChange={(event) => setManualTagValue(event.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <datalist id="tag-suggestions">
+                      {(suggestions ?? []).map((s) => (
+                        <option key={s} value={s} />
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    disabled={!resolvedCycleId || !selectedFormId}
-                    onClick={async () => {
-                      const result = await generateSessionLink({
-                        cycleId: resolvedCycleId as Id<"scoutingCycles">,
-                        formId: selectedFormId as Id<"scoutingForms">,
-                        preselectedTeamNumber: teamNumber,
-                      });
-                      setModalLink(`${window.location.origin}${result.path}`);
-                    }}
-                  >
-                    <Link2 className="mr-1.5 h-3.5 w-3.5" />
-                    Generate link
-                  </Button>
-                </CardContent>
-              </Card>
+                    </datalist>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={!resolvedCycleId || !manualTagKey.trim()}
+                      onClick={async () => {
+                        await upsertManualTeamTag({
+                          cycleId: resolvedCycleId as Id<"scoutingCycles">,
+                          teamNumber,
+                          key: manualTagKey,
+                          value: manualTagValue,
+                        });
+                        setManualTagKey("");
+                        setManualTagValue("");
+                      }}
+                    >
+                      Save tag
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {canCreateTeamSessions ? (
+                <Card className="rounded-xl border-border/60 shadow-sm">
+                  <CardHeader className="p-4 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Scout link</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 p-4 pt-0">
+                    <Select
+                      value={selectedFormId || "__none__"}
+                      onValueChange={(v) => setSelectedFormId(v === "__none__" ? "" : v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Choose form" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Choose a form</SelectItem>
+                        {(forms ?? []).map((form) => (
+                          <SelectItem key={form._id} value={form._id}>
+                            {form.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={!resolvedCycleId || !selectedFormId}
+                      onClick={async () => {
+                        const result = await generateSessionLink({
+                          cycleId: resolvedCycleId as Id<"scoutingCycles">,
+                          formId: selectedFormId as Id<"scoutingForms">,
+                          preselectedTeamNumber: teamNumber,
+                        });
+                        setModalLink(`${window.location.origin}${result.path}`);
+                      }}
+                    >
+                      <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                      Generate link
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
             </>
           )}
 

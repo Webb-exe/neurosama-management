@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalMutation, mutation } from "../_generated/server";
-import { requireAdminUser } from "./lib";
+import { PERMISSIONS } from "../../lib/permissions";
+import { requireScoutingPermission } from "./lib";
 
 const RESET_BATCH_SIZE = 100;
 const RESET_TABLES = [
@@ -38,7 +39,7 @@ export const resetAllScoutingData = mutation({
     queued: v.boolean(),
   }),
   handler: async (ctx) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingReset.key);
     await ctx.scheduler.runAfter(0, internal.scouting.admin.resetAllScoutingDataBatch, {
       table: RESET_TABLES[0],
     });

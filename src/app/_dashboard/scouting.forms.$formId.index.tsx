@@ -12,6 +12,7 @@ import {
 } from "@/components/scouting/search";
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
 import {
   normalizeFormItems,
   type ScoutingFormItem,
@@ -46,8 +47,8 @@ function ScoutingFormDetailPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const formId = params.formId as Id<"scoutingForms">;
-  const { user } = useAuthContext();
-  const canManage = user?.role === "owner" || user?.role === "admin";
+  const { hasPermission } = useAuthContext();
+  const canManage = hasPermission(PERMISSIONS.scoutingFormsManage);
   const formData = useQuery(
     api.scouting.forms.getFormEditor,
     canManage ? { formId } : "skip",
@@ -274,7 +275,7 @@ function ScoutingFormDetailPage() {
             <CardTitle>Not Authorized</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Only admins can edit or publish scouting forms.
+            You do not have permission to edit or publish scouting forms.
           </CardContent>
         </Card>
       ) : null}

@@ -1,6 +1,13 @@
 import { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
+  normalizePermissionUser,
+  PERMISSIONS,
+  userHasPermission,
+  type PermissionKey,
+} from "../../lib/permissions";
+import { approvedUserValidator } from "../auth/validators";
+import {
   normalizeFormItems,
   serializeTagValue,
   type ScoutingAnswers,
@@ -11,7 +18,34 @@ import {
 
 type Ctx = QueryCtx | MutationCtx;
 
-export async function getCurrentUser(ctx: Ctx) {
+function toApprovedUser(user: {
+  _id: Id<"users">;
+  clerkInfoId: Id<"clerkInfo">;
+  isOwner: boolean;
+  roles: readonly string[];
+}) {
+  const normalizedUser = normalizePermissionUser(user);
+  if (!normalizedUser) {
+    throw new Error("User has an invalid permission configuration");
+  }
+
+  return {
+    _id: user._id,
+    clerkInfoId: user.clerkInfoId,
+    isOwner: normalizedUser.isOwner,
+    roles: normalizedUser.roles,
+  };
+}
+
+export async function getCurrentUser(ctx: Ctx): Promise<
+  | {
+      _id: Id<"users">;
+      clerkInfoId: Id<"clerkInfo">;
+      isOwner: boolean;
+      roles: typeof approvedUserValidator.fields.roles.type;
+    }
+  | null
+> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     console.log("No identity found");
@@ -35,9 +69,10 @@ export async function getCurrentUser(ctx: Ctx) {
 
   if (!user) {
     console.log("No user found");
+    return null;
   }
 
-  return user ?? null;
+  return toApprovedUser(user);
 }
 
 export async function requireApprovedUser(ctx: Ctx) {
@@ -48,12 +83,19 @@ export async function requireApprovedUser(ctx: Ctx) {
   return user;
 }
 
-export async function requireAdminUser(ctx: Ctx) {
+export async function requireScoutingPermission(
+  ctx: Ctx,
+  permission: PermissionKey,
+) {
   const user = await requireApprovedUser(ctx);
-  if (user.role !== "owner" && user.role !== "admin") {
-    throw new Error("Not authorized - owner or admin required");
+  if (!userHasPermission(user, permission)) {
+    throw new Error(`Not authorized - ${permission} required`);
   }
   return user;
+}
+
+export async function requireAdminUser(ctx: Ctx) {
+  return requireScoutingPermission(ctx, PERMISSIONS.scoutingFormsManage.key);
 }
 
 export async function getCycleById(

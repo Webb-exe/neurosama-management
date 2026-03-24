@@ -12,6 +12,7 @@ import {
 } from "@/components/scouting/search";
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
 import {
   normalizeFormItems,
   stripHiddenQuestionAnswers,
@@ -37,8 +38,8 @@ function ScoutingFormPreviewPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const formId = params.formId as Id<"scoutingForms">;
-  const { user } = useAuthContext();
-  const canManage = user?.role === "owner" || user?.role === "admin";
+  const { hasPermission } = useAuthContext();
+  const canManage = hasPermission(PERMISSIONS.scoutingFormsManage);
   const formData = useQuery(
     api.scouting.forms.getFormEditor,
     canManage ? { formId } : "skip",
@@ -87,7 +88,7 @@ function ScoutingFormPreviewPage() {
             <CardTitle>Not Authorized</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Only admins can preview unpublished scouting forms.
+            You do not have permission to preview unpublished scouting forms.
           </CardContent>
         </Card>
       ) : null}
