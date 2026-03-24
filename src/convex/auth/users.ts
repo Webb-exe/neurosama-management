@@ -110,8 +110,8 @@ const approvedUserShape = v.object({
 function normalizeApprovedUserRecord(user: {
   _id: Id<"users">;
   clerkInfoId: Id<"clerkInfo">;
-  isOwner?: boolean | undefined;
-  roles?: readonly string[] | undefined;
+  isOwner?: boolean;
+  roles?: readonly string[];
 }) {
   const normalized = normalizePermissionUser(user);
   if (!normalized) {

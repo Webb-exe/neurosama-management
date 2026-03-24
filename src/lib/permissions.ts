@@ -6,6 +6,33 @@ export const APP_ROLES = [
 ] as const;
 
 export type AppRole = (typeof APP_ROLES)[number];
+export type PermissionKey =
+  | "admin.access"
+  | "waitlist.manage"
+  | "users.view"
+  | "users.manage_roles"
+  | "users.remove"
+  | "settings.manage"
+  | "invites.manage"
+  | "scouting.view"
+  | "scouting.analysis.view"
+  | "scouting.team.view_ftc_data"
+  | "scouting.team.view_tags"
+  | "scouting.team.view_responses"
+  | "scouting.team.manage_tags"
+  | "scouting.responses.view"
+  | "scouting.forms.manage"
+  | "scouting.forms.view_published"
+  | "scouting.cycles.manage"
+  | "scouting.sessions.create_team"
+  | "scouting.sessions.create_public"
+  | "scouting.reset";
+
+export type Permission = {
+  key: PermissionKey;
+  label: string;
+  description: string;
+};
 
 export const PERMISSIONS = {
   adminAccess: {
@@ -108,16 +135,7 @@ export const PERMISSIONS = {
     label: "Reset scouting data",
     description: "Delete all stored scouting data.",
   },
-} as const;
-
-export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]["key"];
-
-export type Permission = {
-  key: PermissionKey;
-  label: string;
-  description: string;
-};
-
+} as const satisfies Record<string, Permission>;
 export const ALL_PERMISSION_KEYS = Object.values(PERMISSIONS).map(
   (permission) => permission.key,
 ) as PermissionKey[];

@@ -18,7 +18,16 @@ import {
 
 type InternalQueryCtx = CustomCtx<typeof internalQuery>;
 
-async function lookupAuthUser(ctx: InternalQueryCtx) {
+type LookupAuthUserResult = {
+  clerkInfoId: typeof authUserValidator.fields.clerkInfoId.type;
+  userId: typeof authUserValidator.fields.userId.type;
+  isOwner: boolean;
+  roles: typeof authUserValidator.fields.roles.type;
+};
+
+async function lookupAuthUser(
+  ctx: InternalQueryCtx,
+): Promise<LookupAuthUserResult | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     return null;
