@@ -261,85 +261,215 @@ function ScoutingFormDetailPage() {
       ) : null}
 
       {canManage ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="xl:col-span-2 space-y-6">
-            <Card className="rounded-[32px] border-border/70 bg-card shadow-sm">
-              <CardHeader className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-2">
-                    <CardTitle className="text-2xl">
-                      {name || formData?.form.name || "Untitled form"}
-                    </CardTitle>
-                    <CardDescription>
-                      Pages, sections, and conditions. Use Preview and Public links tabs to test and
-                      share.
-                    </CardDescription>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={async () => {
-                        if (isViewingPublishedVersion) {
-                          return;
-                        }
-                        setSaveState("saving");
-                        try {
-                          await persistDraft();
-                        } catch {
-                          setSaveState("error");
-                        }
-                      }}
-                      disabled={isViewingPublishedVersion}
-                    >
-                      {saveState === "saving" ? (
-                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                      )}
-                      Save Draft
-                    </Button>
-                    <Button
-                      onClick={async () => {
-                        if (isViewingPublishedVersion) {
-                          return;
-                        }
-                        setSaveState("saving");
-                        try {
-                          await persistDraft();
-                          await publishDraft({ formId });
-                        } catch {
-                          setSaveState("error");
-                        }
-                      }}
-                      disabled={items.length === 0 || isViewingPublishedVersion}
-                    >
-                      Publish Draft
-                    </Button>
-                  </div>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <Card className="order-1 min-w-0 rounded-[32px] border-border/70 bg-card shadow-sm xl:col-start-1 xl:row-start-1">
+            <CardHeader className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-2">
+                  <CardTitle className="text-2xl">
+                    {name || formData?.form.name || "Untitled form"}
+                  </CardTitle>
+                  <CardDescription>
+                    Pages, sections, and conditions. Use Preview and Public links tabs to test and
+                    share.
+                  </CardDescription>
                 </div>
-                {isViewingPublishedVersion ? (
-                  <div className="rounded-2xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
-                    Viewing Published v{selectedPublishedVersion?.versionNumber ?? "?"} in read-only
-                    mode. Select Draft to continue editing.
-                  </div>
-                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      if (isViewingPublishedVersion) {
+                        return;
+                      }
+                      setSaveState("saving");
+                      try {
+                        await persistDraft();
+                      } catch {
+                        setSaveState("error");
+                      }
+                    }}
+                    disabled={isViewingPublishedVersion}
+                  >
+                    {saveState === "saving" ? (
+                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    Save Draft
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (isViewingPublishedVersion) {
+                        return;
+                      }
+                      setSaveState("saving");
+                      try {
+                        await persistDraft();
+                        await publishDraft({ formId });
+                      } catch {
+                        setSaveState("error");
+                      }
+                    }}
+                    disabled={items.length === 0 || isViewingPublishedVersion}
+                  >
+                    Publish Draft
+                  </Button>
+                </div>
+              </div>
+              {isViewingPublishedVersion ? (
+                <div className="rounded-2xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                  Viewing Published v{selectedPublishedVersion?.versionNumber ?? "?"} in read-only
+                  mode. Select Draft to continue editing.
+                </div>
+              ) : null}
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span>
+                {saveState === "saving"
+                  ? "Saving..."
+                  : saveState === "error"
+                    ? "Autosave failed. Use Save Draft to retry."
+                    : saveState === "saved"
+                      ? "All changes saved."
+                      : "Autosave ready."}
+              </span>
+              <span>
+                Last saved: {lastSavedAt ? new Date(lastSavedAt).toLocaleString() : "Not yet"}
+              </span>
+            </CardContent>
+          </Card>
+
+          <div className="order-2 space-y-6 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:row-span-2 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto">
+            <Card className="rounded-[28px] border-border/70 shadow-sm">
+              <CardHeader>
+                <CardTitle>Version history</CardTitle>
+                <CardDescription>
+                  Published versions stay immutable so old links remain reproducible.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <span>
-                  {saveState === "saving"
-                    ? "Saving..."
-                    : saveState === "error"
-                      ? "Autosave failed. Use Save Draft to retry."
-                      : saveState === "saved"
-                        ? "All changes saved."
-                        : "Autosave ready."}
-                </span>
-                <span>
-                  Last saved: {lastSavedAt ? new Date(lastSavedAt).toLocaleString() : "Not yet"}
-                </span>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Draft is editable. Published versions are read-only snapshots.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPublishedVersionId(null)}
+                  className={`w-full rounded-2xl border p-3 text-left text-sm transition hover:bg-muted/40 ${
+                    selectedPublishedVersionId === null
+                      ? "border-primary/80 bg-primary/5"
+                      : "border-border/70"
+                  }`}
+                >
+                  <div className="font-medium">Draft</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {formData?.draftVersion
+                      ? `Updated ${new Date(formData.draftVersion.updatedAt).toLocaleString()}`
+                      : "No draft yet"}
+                  </div>
+                </button>
+                {(formData?.versions ?? [])
+                  .filter((version) => version.status === "published")
+                  .map((version) => (
+                    <button
+                      key={version._id}
+                      type="button"
+                      onClick={() => setSelectedPublishedVersionId(version._id)}
+                      className={`w-full rounded-2xl border p-3 text-left text-sm transition hover:bg-muted/40 ${
+                        selectedPublishedVersionId === version._id
+                          ? "border-primary/80 bg-primary/5"
+                          : "border-border/70"
+                      }`}
+                    >
+                      <div className="font-medium">
+                        {`Published v${version.versionNumber ?? "?"}`}
+                      </div>
+                      <div className="mt-1 text-muted-foreground">
+                        Updated {new Date(version.updatedAt).toLocaleString()}
+                      </div>
+                      {version.publishedAt ? (
+                        <div className="text-muted-foreground">
+                          Published {new Date(version.publishedAt).toLocaleString()}
+                        </div>
+                      ) : null}
+                    </button>
+                  ))}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={!selectedPublishedVersion || copyingVersion}
+                  onClick={() => setCopyConfirmOpen(true)}
+                >
+                  {copyingVersion ? (
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Copy className="mr-2 h-4 w-4" />
+                  )}
+                  {selectedPublishedVersion
+                    ? `Copy Published v${selectedPublishedVersion.versionNumber ?? "?"} to Draft`
+                    : "Select a published version to copy"}
+                </Button>
               </CardContent>
             </Card>
 
+            <Card className="rounded-[28px] border-border/70 shadow-sm">
+              <CardHeader>
+                <CardTitle>One-time scout link</CardTitle>
+                <CardDescription>
+                  Creates a single session immediately. Use the Public links tab for reusable links
+                  that ask for a team number first and track per-team usage.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {teamBindingMode === "preselected" ? (
+                  <Input
+                    type="number"
+                    placeholder="Preselected team number"
+                    value={linkTeamNumber}
+                    onChange={(event) => setLinkTeamNumber(event.target.value)}
+                  />
+                ) : null}
+                <Button
+                  className="w-full"
+                  disabled={!resolvedCycleId || !formData?.form.latestPublishedVersionId}
+                  onClick={async () => {
+                    const result = await generateSessionLink({
+                      cycleId: resolvedCycleId as Id<"scoutingCycles">,
+                      formId,
+                      preselectedTeamNumber:
+                        teamBindingMode === "preselected" && linkTeamNumber.trim()
+                          ? Number(linkTeamNumber)
+                          : undefined,
+                    });
+                    setGeneratedLink(`${window.location.origin}${result.path}`);
+                  }}
+                >
+                  <SendHorizontal className="mr-2 h-4 w-4" />
+                  Generate Link
+                </Button>
+                {generatedLink ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={generatedLink}
+                      readOnly
+                      onFocus={(event) => event.target.select()}
+                    />
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(generatedLink);
+                      }}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Link
+                    </Button>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="order-3 min-w-0 xl:col-start-1 xl:row-start-2">
             <FormBuilder
               name={name}
               description={description}
@@ -370,136 +500,6 @@ function ScoutingFormDetailPage() {
                 setItems(nextItems);
               }}
             />
-
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <Card className="rounded-[28px] border-border/70 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Version History</CardTitle>
-                  <CardDescription>
-                    Published versions stay immutable so old links remain reproducible.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Draft is editable. Published versions are read-only snapshots.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPublishedVersionId(null)}
-                    className={`w-full rounded-2xl border p-3 text-left text-sm transition hover:bg-muted/40 ${
-                      selectedPublishedVersionId === null
-                        ? "border-primary/80 bg-primary/5"
-                        : "border-border/70"
-                    }`}
-                  >
-                    <div className="font-medium">Draft</div>
-                    <div className="mt-1 text-muted-foreground">
-                      {formData?.draftVersion
-                        ? `Updated ${new Date(formData.draftVersion.updatedAt).toLocaleString()}`
-                        : "No draft yet"}
-                    </div>
-                  </button>
-                  {(formData?.versions ?? [])
-                    .filter((version) => version.status === "published")
-                    .map((version) => (
-                    <button
-                      key={version._id}
-                      type="button"
-                      onClick={() => setSelectedPublishedVersionId(version._id)}
-                      className={`w-full rounded-2xl border p-3 text-left text-sm transition hover:bg-muted/40 ${
-                        selectedPublishedVersionId === version._id
-                          ? "border-primary/80 bg-primary/5"
-                          : "border-border/70"
-                      }`}
-                    >
-                      <div className="font-medium">
-                        {`Published v${version.versionNumber ?? "?"}`}
-                      </div>
-                      <div className="mt-1 text-muted-foreground">
-                        Updated {new Date(version.updatedAt).toLocaleString()}
-                      </div>
-                      {version.publishedAt ? (
-                        <div className="text-muted-foreground">
-                          Published {new Date(version.publishedAt).toLocaleString()}
-                        </div>
-                      ) : null}
-                    </button>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={!selectedPublishedVersion || copyingVersion}
-                    onClick={() => setCopyConfirmOpen(true)}
-                  >
-                    {copyingVersion ? (
-                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Copy className="mr-2 h-4 w-4" />
-                    )}
-                    {selectedPublishedVersion
-                      ? `Copy Published v${selectedPublishedVersion.versionNumber ?? "?"} to Draft`
-                      : "Select a published version to copy"}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-[28px] border-border/70 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Generate One-Time Scout Link</CardTitle>
-                  <CardDescription>
-                    Creates a single session immediately. Use Public Links above for reusable links
-                    that ask for a team number first and track per-team usage.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {teamBindingMode === "preselected" ? (
-                    <Input
-                      type="number"
-                      placeholder="Preselected team number"
-                      value={linkTeamNumber}
-                      onChange={(event) => setLinkTeamNumber(event.target.value)}
-                    />
-                  ) : null}
-                  <Button
-                    className="w-full"
-                    disabled={!resolvedCycleId || !formData?.form.latestPublishedVersionId}
-                    onClick={async () => {
-                      const result = await generateSessionLink({
-                        cycleId: resolvedCycleId as Id<"scoutingCycles">,
-                        formId,
-                        preselectedTeamNumber:
-                          teamBindingMode === "preselected" && linkTeamNumber.trim()
-                            ? Number(linkTeamNumber)
-                            : undefined,
-                      });
-                      setGeneratedLink(`${window.location.origin}${result.path}`);
-                    }}
-                  >
-                    <SendHorizontal className="mr-2 h-4 w-4" />
-                    Generate Link
-                  </Button>
-                  {generatedLink ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={generatedLink}
-                        readOnly
-                        onFocus={(event) => event.target.select()}
-                      />
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={async () => {
-                          await navigator.clipboard.writeText(generatedLink);
-                        }}
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy Link
-                      </Button>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </div>
       ) : null}
