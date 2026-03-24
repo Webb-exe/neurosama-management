@@ -54,18 +54,21 @@ export function ScoutingFrame({
   onCycleChange,
   children,
 }: Props) {
-  const cycles = useQuery(api.scouting.cycles.listCycles, {});
   const { hasPermission } = useAuthContext();
+  const canViewScouting = hasPermission(PERMISSIONS.scoutingView);
+  const canViewAnalysis = hasPermission(PERMISSIONS.scoutingAnalysisView);
   const canManageForms = hasPermission(PERMISSIONS.scoutingFormsManage);
   const canManageCycles = hasPermission(PERMISSIONS.scoutingCyclesManage);
   const canViewResponses = hasPermission(PERMISSIONS.scoutingResponsesView);
+  const cycles = useQuery(api.scouting.cycles.listCycles, canViewScouting ? {} : "skip");
   const canCreateCycles = canManageCycles;
   const visibleNavItems = navItems.filter(
     (item) =>
+      (item.id === "analysis" && canViewAnalysis) ||
       (item.id === "forms" && canManageForms) ||
       (item.id === "cycles" && canManageCycles) ||
       (item.id === "responses" && canViewResponses) ||
-      (item.id !== "forms" && item.id !== "cycles" && item.id !== "responses"),
+      (item.id === "overview" && canViewScouting),
   );
 
   return (
@@ -121,7 +124,7 @@ export function ScoutingFrame({
         ))}
       </div>
 
-      {cycles !== undefined && cycles.length === 0 ? (
+      {canViewScouting && cycles !== undefined && cycles.length === 0 ? (
         <Card className="rounded-xl">
           <CardHeader className="p-4">
             <CardTitle className="text-base">No Scouting Cycles</CardTitle>

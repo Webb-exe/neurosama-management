@@ -6,6 +6,9 @@ import { TagAnalysisTable } from "@/components/scouting/TagAnalysisTable";
 import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
 import { mergeScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useAuthContext } from "@/context/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_dashboard/scouting/analysis")({
@@ -16,6 +19,8 @@ export const Route = createFileRoute("/_dashboard/scouting/analysis")({
 function ScoutingAnalysisPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const { hasPermission } = useAuthContext();
+  const canViewAnalysis = hasPermission(PERMISSIONS.scoutingAnalysisView);
 
   const changeCycle = (cycleId: string) => {
     navigate({
@@ -27,10 +32,31 @@ function ScoutingAnalysisPage() {
   const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
   const analysis = useQuery(
     api.scouting.teams.getAnalysis,
-    resolvedCycleId
+    canViewAnalysis && resolvedCycleId
       ? { cycleId: resolvedCycleId as Id<"scoutingCycles"> }
       : "skip",
   );
+
+  if (!canViewAnalysis) {
+    return (
+      <ScoutingFrame
+        title="Analysis"
+        description="Sort by any tag, filter from real values, and drill into team pages."
+        active="analysis"
+        cycleId={resolvedCycleId}
+        onCycleChange={changeCycle}
+      >
+        <Card className="rounded-xl">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Not authorized</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
+            You do not have permission to view scouting analysis.
+          </CardContent>
+        </Card>
+      </ScoutingFrame>
+    );
+  }
 
   return (
     <ScoutingFrame

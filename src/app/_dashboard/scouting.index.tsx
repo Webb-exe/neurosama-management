@@ -43,6 +43,8 @@ function ScoutingHomePage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const { user } = useAuthContext();
+  const canViewScouting = userHasPermission(user, PERMISSIONS.scoutingView);
+  const canViewAnalysis = userHasPermission(user, PERMISSIONS.scoutingAnalysisView);
   const canManage = userHasPermission(user, PERMISSIONS.scoutingFormsManage);
   const canReset = userHasPermission(user, PERMISSIONS.scoutingReset);
   const [teamSearch, setTeamSearch] = useState(search.teamNumber ?? "");
@@ -60,17 +62,42 @@ function ScoutingHomePage() {
   const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
   const cycle = useQuery(
     api.scouting.cycles.getActiveCycleDetail,
-    resolvedCycleId ? { cycleId: resolvedCycleId as Id<"scoutingCycles"> } : "skip",
+    canViewScouting && resolvedCycleId
+      ? { cycleId: resolvedCycleId as Id<"scoutingCycles"> }
+      : "skip",
   );
   const analysis = useQuery(
     api.scouting.teams.getAnalysis,
-    resolvedCycleId ? { cycleId: resolvedCycleId as Id<"scoutingCycles"> } : "skip",
+    canViewAnalysis && resolvedCycleId
+      ? { cycleId: resolvedCycleId as Id<"scoutingCycles"> }
+      : "skip",
   );
   const forms = useQuery(api.scouting.forms.listForms, canManage ? {} : "skip");
 
   useEffect(() => {
     setTeamSearch(search.teamNumber ?? "");
   }, [search.teamNumber]);
+
+  if (!canViewScouting) {
+    return (
+      <ScoutingFrame
+        title="Scouting"
+        description="Monitor the current cycle and jump to teams, analysis, responses, or forms."
+        active="overview"
+        cycleId={resolvedCycleId}
+        onCycleChange={changeCycle}
+      >
+        <Card className="rounded-xl">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Not authorized</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
+            You do not have permission to access scouting.
+          </CardContent>
+        </Card>
+      </ScoutingFrame>
+    );
+  }
 
   const handleTeamSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -130,7 +157,13 @@ function ScoutingHomePage() {
                 />
                 <StatCard
                   label="Scouted teams"
-                  value={analysis !== undefined ? String(analysis.rows.length) : "—"}
+                  value={
+                    canViewAnalysis
+                      ? analysis !== undefined
+                        ? String(analysis.rows.length)
+                        : "—"
+                      : "Hidden"
+                  }
                 />
                 <StatCard
                   label="Forms"

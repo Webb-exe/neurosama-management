@@ -3,7 +3,6 @@ import { mutation, query } from "../_generated/server";
 import { PERMISSIONS } from "../../lib/permissions";
 import {
   getCycleOrDefault,
-  requireApprovedUser,
   requireScoutingPermission,
 } from "./lib";
 
@@ -19,7 +18,7 @@ export const listCycles = query({
     }),
   ),
   handler: async (ctx) => {
-    await requireApprovedUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingView.key);
 
     const cycles = await ctx.db.query("scoutingCycles").collect();
     return cycles
@@ -55,7 +54,7 @@ export const getActiveCycleDetail = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    await requireApprovedUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingView.key);
 
     const cycle = await getCycleOrDefault(ctx, args.cycleId);
     if (!cycle) {

@@ -3,7 +3,6 @@ import { mutation, query } from "../_generated/server";
 import {
   ensureTagDefinition,
   getOrCreateCycleTeamRecord,
-  requireApprovedUser,
   requireScoutingPermission,
 } from "./lib";
 import { PERMISSIONS } from "../../lib/permissions";
@@ -22,7 +21,7 @@ export const listTagDefinitions = query({
     }),
   ),
   handler: async (ctx) => {
-    await requireApprovedUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingTeamViewTags.key);
 
     const definitions = await ctx.db.query("scoutingTagDefinitions").collect();
     return definitions

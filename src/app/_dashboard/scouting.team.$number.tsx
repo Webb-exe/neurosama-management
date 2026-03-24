@@ -62,6 +62,8 @@ function ScoutingTeamPage() {
   const navigate = useNavigate();
   const teamNumber = Number(params.number);
   const { hasPermission } = useAuthContext();
+  const canViewScouting = hasPermission(PERMISSIONS.scoutingView);
+  const canViewFtcData = hasPermission(PERMISSIONS.scoutingTeamViewFtcData);
   const canManageTags = hasPermission(PERMISSIONS.scoutingTeamManageTags);
   const canViewResponses = hasPermission(PERMISSIONS.scoutingTeamViewResponses);
   const canViewResponseDetail = hasPermission(PERMISSIONS.scoutingResponsesView);
@@ -82,10 +84,10 @@ function ScoutingTeamPage() {
   };
 
   const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
-  const teamPage = useFtcScoutTeamPage(teamNumber);
+  const teamPage = useFtcScoutTeamPage(canViewFtcData ? teamNumber : 0);
   const teamSummary = useQuery(
     api.scouting.teams.getTeamSummary,
-    resolvedCycleId
+    canViewScouting && resolvedCycleId
       ? { cycleId: resolvedCycleId as Id<"scoutingCycles">, teamNumber }
       : "skip",
   );
@@ -114,6 +116,27 @@ function ScoutingTeamPage() {
     ? getQuestions(normalizeFormItems(responseDetail.questions as ScoutingFormItem[]))
     : [];
 
+  if (!canViewScouting) {
+    return (
+      <ScoutingFrame
+        title={`Team ${teamNumber}`}
+        description="Tags, responses, external stats, and scout link generation for this team."
+        active="overview"
+        cycleId={resolvedCycleId}
+        onCycleChange={changeCycle}
+      >
+        <Card className="rounded-xl">
+          <CardHeader className="p-4">
+            <CardTitle className="text-base">Not authorized</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
+            You do not have permission to view scouting team pages.
+          </CardContent>
+        </Card>
+      </ScoutingFrame>
+    );
+  }
+
   return (
     <ScoutingFrame
       title={`Team ${teamNumber}`}
@@ -135,7 +158,7 @@ function ScoutingTeamPage() {
           </h2>
           <p className="text-xs text-muted-foreground">FTC #{teamNumber}</p>
         </div>
-        {teamPage.data?.website && (
+        {canViewFtcData && teamPage.data?.website && (
           <a
             className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-muted/40"
             href={teamPage.data.website}
@@ -149,14 +172,14 @@ function ScoutingTeamPage() {
 
       {/* Quick stats row */}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {quickStats ? (
+        {canViewFtcData && quickStats ? (
           <>
             <MiniStat label="Total OPR" value={fmt(quickStats.tot.value)} hint={`#${quickStats.tot.rank}`} />
             <MiniStat label="Auto OPR" value={fmt(quickStats.auto.value)} hint={`#${quickStats.auto.rank}`} />
             <MiniStat label="DC OPR" value={fmt(quickStats.dc.value)} hint={`#${quickStats.dc.rank}`} />
             <MiniStat label="EG OPR" value={fmt(quickStats.eg.value)} hint={`#${quickStats.eg.rank}`} />
           </>
-        ) : (
+        ) : canViewFtcData ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
               <Skeleton className="h-3 w-14 rounded" />
@@ -164,6 +187,10 @@ function ScoutingTeamPage() {
               <Skeleton className="mt-1.5 h-2.5 w-8 rounded" />
             </div>
           ))
+        ) : (
+          <div className="col-span-full rounded-lg border border-border/50 bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
+            FTC Scout data is not available with your current scouting permissions.
+          </div>
         )}
       </div>
 
@@ -224,68 +251,70 @@ function ScoutingTeamPage() {
           </Card>
 
           {/* Responses */}
-          <Card className="rounded-xl border-border/60 shadow-sm">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Responses</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              {teamSummary === undefined ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <Skeleton key={i} className="h-20 w-full rounded-lg" />
-                  ))}
-                </div>
-              ) : teamSummary.responses.length === 0 ? (
-                <p className="py-3 text-center text-sm text-muted-foreground">
-                  No responses in this cycle.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {teamSummary.responses.map((response) => (
-                    <div
-                      key={response._id}
-                      className="rounded-lg border border-border/50 p-3"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">
-                          {response.formName}
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            v{response.formVersionNumber}
-                          </span>
+          {canViewResponses ? (
+            <Card className="rounded-xl border-border/60 shadow-sm">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Responses</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                {teamSummary === undefined ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : teamSummary.responses.length === 0 ? (
+                  <p className="py-3 text-center text-sm text-muted-foreground">
+                    No responses in this cycle.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {teamSummary.responses.map((response) => (
+                      <div
+                        key={response._id}
+                        className="rounded-lg border border-border/50 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium">
+                            {response.formName}
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              v{response.formVersionNumber}
+                            </span>
+                          </p>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {response.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+                          {response.status === "submitted" && response.submittedAt
+                            ? new Date(response.submittedAt).toLocaleString()
+                            : `Autosaved ${new Date(response.lastAutosavedAt).toLocaleString()}`}
                         </p>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {response.status}
-                        </Badge>
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground/70">
-                        {response.status === "submitted" && response.submittedAt
-                          ? new Date(response.submittedAt).toLocaleString()
-                          : `Autosaved ${new Date(response.lastAutosavedAt).toLocaleString()}`}
-                      </p>
-                      <div className="mt-2 flex gap-1.5">
-                        {canViewResponseDetail && (
+                        <div className="mt-2 flex gap-1.5">
+                          {canViewResponseDetail && (
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => setSelectedResponseId(response._id)}
+                            >
+                              View
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="xs"
-                            onClick={() => setSelectedResponseId(response._id)}
+                            onClick={() => setModalLink(`${window.location.origin}${response.path}`)}
                           >
-                            View
+                            QR code
                           </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => setModalLink(`${window.location.origin}${response.path}`)}
-                        >
-                          QR code
-                        </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
         {/* Right sidebar */}
@@ -382,88 +411,92 @@ function ScoutingTeamPage() {
           )}
 
           {/* Event OPR */}
-          <Card className="rounded-xl border-border/60 shadow-sm">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Events</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              {teamPage.data == null ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
-                  ))}
-                </div>
-              ) : teamPage.data.events.length > 0 ? (
-                <div className="space-y-1.5">
-                  {teamPage.data.events.map((entry) => (
-                    <Link
-                      to="/events/$code"
-                      params={{ code: entry.event.code }}
-                      key={entry.event.code}
-                      className="block rounded-lg border border-border/50 p-2.5 transition-colors hover:border-primary/40 hover:bg-muted/20"
-                    >
-                      <p className="text-xs font-medium">{entry.event.name}</p>
-                      {entry.stats ? (
-                        <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
-                          <span>OPR {fmt(entry.stats.opr.totalPointsNp)}</span>
-                          <span>Rank #{entry.stats.rank}</span>
-                        </div>
-                      ) : (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">No stats</p>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="py-3 text-center text-sm text-muted-foreground">
-                  No events found.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          {canViewFtcData ? (
+            <Card className="rounded-xl border-border/60 shadow-sm">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Events</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                {teamPage.data == null ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : teamPage.data.events.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {teamPage.data.events.map((entry) => (
+                      <Link
+                        to="/events/$code"
+                        params={{ code: entry.event.code }}
+                        key={entry.event.code}
+                        className="block rounded-lg border border-border/50 p-2.5 transition-colors hover:border-primary/40 hover:bg-muted/20"
+                      >
+                        <p className="text-xs font-medium">{entry.event.name}</p>
+                        {entry.stats ? (
+                          <div className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
+                            <span>OPR {fmt(entry.stats.opr.totalPointsNp)}</span>
+                            <span>Rank #{entry.stats.rank}</span>
+                          </div>
+                        ) : (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">No stats</p>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-3 text-center text-sm text-muted-foreground">
+                    No events found.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           {/* FTC Scout info */}
-          <Card className="rounded-xl border-border/60 shadow-sm">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">FTC Scout</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 p-4 pt-0 text-xs text-muted-foreground">
-              {teamPage.data == null ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-3 w-32 rounded" />
-                  <Skeleton className="h-3 w-24 rounded" />
-                  <Skeleton className="h-3 w-40 rounded" />
-                </div>
-              ) : (
-                <>
-                  <p>Rookie year: {teamPage.data.rookieYear ?? "Unknown"}</p>
-                  <p>School: {teamPage.data.schoolName ?? "Unknown"}</p>
-                  <p>
-                    Location:{" "}
-                    {[
-                      teamPage.data.location.city,
-                      teamPage.data.location.state,
-                      teamPage.data.location.country,
-                    ]
-                      .filter(Boolean)
-                      .join(", ") || "Unknown"}
-                  </p>
-                  {quickStats && (
-                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 rounded-lg border border-border/50 p-2.5 text-[11px]">
-                      <p>Total: {fmt(quickStats.tot.value)}</p>
-                      <p>Rank #{quickStats.tot.rank}</p>
-                      <p>Auto: {fmt(quickStats.auto.value)}</p>
-                      <p>Rank #{quickStats.auto.rank}</p>
-                      <p>DC: {fmt(quickStats.dc.value)}</p>
-                      <p>Rank #{quickStats.dc.rank}</p>
-                      <p>EG: {fmt(quickStats.eg.value)}</p>
-                      <p>Rank #{quickStats.eg.rank}</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+          {canViewFtcData ? (
+            <Card className="rounded-xl border-border/60 shadow-sm">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">FTC Scout</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 p-4 pt-0 text-xs text-muted-foreground">
+                {teamPage.data == null ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-32 rounded" />
+                    <Skeleton className="h-3 w-24 rounded" />
+                    <Skeleton className="h-3 w-40 rounded" />
+                  </div>
+                ) : (
+                  <>
+                    <p>Rookie year: {teamPage.data.rookieYear ?? "Unknown"}</p>
+                    <p>School: {teamPage.data.schoolName ?? "Unknown"}</p>
+                    <p>
+                      Location:{" "}
+                      {[
+                        teamPage.data.location.city,
+                        teamPage.data.location.state,
+                        teamPage.data.location.country,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "Unknown"}
+                    </p>
+                    {quickStats && (
+                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 rounded-lg border border-border/50 p-2.5 text-[11px]">
+                        <p>Total: {fmt(quickStats.tot.value)}</p>
+                        <p>Rank #{quickStats.tot.rank}</p>
+                        <p>Auto: {fmt(quickStats.auto.value)}</p>
+                        <p>Rank #{quickStats.auto.rank}</p>
+                        <p>DC: {fmt(quickStats.dc.value)}</p>
+                        <p>Rank #{quickStats.dc.rank}</p>
+                        <p>EG: {fmt(quickStats.eg.value)}</p>
+                        <p>Rank #{quickStats.eg.rank}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
 
