@@ -1,16 +1,12 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { PublicLinkCard } from "@/components/scouting/PublicLinkCard";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import {
-  mergeScoutingSearch,
-  parseCycleSearch,
-} from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
@@ -54,9 +50,8 @@ function makeTeamRow(): EditableTeamRow {
 
 function ScoutingFormPublicLinksPage() {
   const params = Route.useParams();
-  const search = Route.useSearch();
-  const navigate = useNavigate();
   const formId = params.formId as Id<"scoutingForms">;
+  const { resolvedCycleId } = useScoutingLayout();
   const { hasPermission } = useAuthContext();
   const canManage = hasPermission(PERMISSIONS.scoutingFormsManage);
   const [label, setLabel] = useState("");
@@ -78,15 +73,6 @@ function ScoutingFormPublicLinksPage() {
   const createPublicLink = useMutation(api.scouting.publicLinks.createPublicLink);
   const setPublicLinkStatus = useMutation(api.scouting.publicLinks.setPublicLinkStatus);
 
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/forms/$formId/links",
-      params,
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
   const publishedVersionNumber = useMemo(
     () =>
       formData?.versions.find((version) => version._id === formData.form.latestPublishedVersionId)
@@ -96,54 +82,26 @@ function ScoutingFormPublicLinksPage() {
 
   if (!canManage) {
     return (
-      <ScoutingFrame
-        title="Public Links"
-        description="Create reusable public form links with team restrictions and usage tracking."
-        active="forms"
-        cycleId={resolvedCycleId}
-        onCycleChange={changeCycle}
-      >
-        <Card className="rounded-xl">
-          <CardHeader>
-            <CardTitle>Not authorized</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            You do not have permission to manage public form links.
-          </CardContent>
-        </Card>
-      </ScoutingFrame>
+      <Card className="rounded-xl">
+        <CardHeader>
+          <CardTitle>Not authorized</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          You do not have permission to manage public form links.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <ScoutingFrame
-      title="Public Links"
-      description="Create reusable public links for a published form, lock down eligible teams, and track usage."
-      active="forms"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" size="sm" asChild>
-          <Link
-            to="/scouting/forms/$formId"
-            params={{ formId: String(formId) }}
-            search={search}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to builder
-          </Link>
-        </Button>
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold">
-            {formData?.form.name ?? "Loading form..."}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {publishedVersionNumber
-              ? `New public links use published version ${publishedVersionNumber}.`
-              : "Publish this form before creating a reusable public link."}
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">{formData?.form.name ?? "Loading form…"}</h2>
+        <p className="text-sm text-muted-foreground">
+          {publishedVersionNumber
+            ? `New public links use published version ${publishedVersionNumber}.`
+            : "Publish this form before creating a reusable public link."}
+        </p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -414,6 +372,6 @@ function ScoutingFormPublicLinksPage() {
           ))
         )}
       </div>
-    </ScoutingFrame>
+    </div>
   );
 }

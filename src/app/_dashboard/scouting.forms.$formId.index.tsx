@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle2, Copy, Eye, Globe, LoaderCircle, SendHorizontal } from "lucide-react";
+import { CheckCircle2, Copy, LoaderCircle, SendHorizontal } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { FormBuilder } from "@/components/scouting/FormBuilder";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import {
-  mergeScoutingSearch,
-  parseCycleSearch,
-} from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import {
@@ -44,8 +40,6 @@ export const Route = createFileRoute("/_dashboard/scouting/forms/$formId/")({
 
 function ScoutingFormDetailPage() {
   const params = Route.useParams();
-  const search = Route.useSearch();
-  const navigate = useNavigate();
   const formId = params.formId as Id<"scoutingForms">;
   const { hasPermission } = useAuthContext();
   const canManage = hasPermission(PERMISSIONS.scoutingFormsManage);
@@ -75,15 +69,7 @@ function ScoutingFormDetailPage() {
   const lastSavedFingerprintRef = useRef("");
   const saveSequenceRef = useRef(0);
 
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/forms/$formId",
-      params,
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
+  const { resolvedCycleId } = useScoutingLayout();
 
   useEffect(() => {
     initializedRef.current = false;
@@ -262,13 +248,7 @@ function ScoutingFormDetailPage() {
   };
 
   return (
-    <ScoutingFrame
-      title="Form Builder"
-      description="Design a sectioned scouting form, preview the scout flow, and publish versioned releases."
-      active="forms"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
+    <>
       {!canManage ? (
         <Card>
           <CardHeader>
@@ -291,48 +271,11 @@ function ScoutingFormDetailPage() {
                       {name || formData?.form.name || "Untitled form"}
                     </CardTitle>
                     <CardDescription>
-                      Build the exact scout flow with pages, nested sections, and question-level
-                      conditions. Preview opens the real form shell without autosave or submit.
+                      Pages, sections, and conditions. Use Preview and Public links tabs to test and
+                      share.
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        navigate({
-                          to: "/scouting/forms/$formId/links" as never,
-                          params: { formId: String(formId) } as never,
-                          search: mergeScoutingSearch(search, {
-                            cycleId: resolvedCycleId ?? undefined,
-                          }) as never,
-                        })
-                      }
-                    >
-                      <Globe className="mr-2 h-4 w-4" />
-                      Public Links
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={async () => {
-                        setSaveState("saving");
-                        try {
-                          await persistDraft();
-                          navigate({
-                            to: "/scouting/forms/$formId/preview" as never,
-                            params: { formId: String(formId) } as never,
-                            search: mergeScoutingSearch(search, {
-                              cycleId: resolvedCycleId ?? undefined,
-                            }) as never,
-                          });
-                        } catch {
-                          setSaveState("error");
-                        }
-                      }}
-                      disabled={items.length === 0 || isViewingPublishedVersion}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Open Preview
-                    </Button>
                     <Button
                       variant="outline"
                       onClick={async () => {
@@ -577,6 +520,6 @@ function ScoutingFormDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ScoutingFrame>
+    </>
   );
 }

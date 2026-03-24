@@ -1,11 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { TagAnalysisTable } from "@/components/scouting/TagAnalysisTable";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import { mergeScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { parseCycleSearch } from "@/components/scouting/search";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_dashboard/scouting/analysis")({
@@ -14,17 +13,7 @@ export const Route = createFileRoute("/_dashboard/scouting/analysis")({
 });
 
 function ScoutingAnalysisPage() {
-  const search = Route.useSearch();
-  const navigate = useNavigate();
-
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/analysis",
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
+  const { resolvedCycleId } = useScoutingLayout();
   const analysis = useQuery(
     api.scouting.teams.getAnalysis,
     resolvedCycleId
@@ -33,19 +22,19 @@ function ScoutingAnalysisPage() {
   );
 
   return (
-    <ScoutingFrame
-      title="Analysis"
-      description="Sort by any tag, filter from real values, and drill into team pages."
-      active="analysis"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Analysis</h2>
+        <p className="text-sm text-muted-foreground">
+          Sort by tags, filter by values, and open team pages from the table.
+        </p>
+      </div>
       {analysis ? (
         <TagAnalysisTable cycleId={resolvedCycleId ?? analysis.cycleId} data={analysis} />
       ) : (
         <AnalysisSkeleton />
       )}
-    </ScoutingFrame>
+    </div>
   );
 }
 

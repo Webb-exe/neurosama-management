@@ -3,9 +3,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
 import { mergeScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import {
@@ -43,14 +42,7 @@ function ScoutingResponsesPage() {
   const { hasPermission } = useAuthContext();
   const canManage = hasPermission(PERMISSIONS.scoutingResponsesView);
 
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/responses",
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
+  const { resolvedCycleId } = useScoutingLayout();
   const responses = useQuery(
     api.scouting.sessions.listResponses,
     canManage && resolvedCycleId
@@ -76,33 +68,25 @@ function ScoutingResponsesPage() {
 
   if (!canManage) {
     return (
-      <ScoutingFrame
-        title="Responses"
-        description="Inspect submitted sessions and review answers."
-        active="responses"
-        cycleId={resolvedCycleId}
-        onCycleChange={changeCycle}
-      >
-        <Card className="rounded-xl">
-          <CardHeader className="p-4">
-            <CardTitle className="text-base">Not authorized</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
-            You do not have permission to inspect the response dashboard.
-          </CardContent>
-        </Card>
-      </ScoutingFrame>
+      <Card className="rounded-xl">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base">Not authorized</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
+          You do not have permission to inspect the response dashboard.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <ScoutingFrame
-      title="Responses"
-      description="Inspect submitted sessions and review answers."
-      active="responses"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Responses</h2>
+        <p className="text-sm text-muted-foreground">
+          Inspect submitted sessions and review answers.
+        </p>
+      </div>
       <Card className="rounded-xl border-border/60 shadow-sm">
         <CardContent className="flex flex-wrap items-end gap-3 p-4">
           <div className="w-36">
@@ -273,6 +257,6 @@ function ScoutingResponsesPage() {
           </CardContent>
         </Card>
       </div>
-    </ScoutingFrame>
+    </div>
   );
 }

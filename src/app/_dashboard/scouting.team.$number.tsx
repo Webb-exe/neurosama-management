@@ -1,21 +1,12 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import {
-  ArrowLeft,
-  ExternalLink,
-  Link2,
-} from "lucide-react";
+import { ExternalLink, Link2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import {
-  getScoutingSearch,
-  mergeScoutingSearch,
-  parseCycleSearch,
-} from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { getScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import { useFtcScoutTeamPage } from "@/lib/ftcScout/hooks";
@@ -58,8 +49,6 @@ export const Route = createFileRoute("/_dashboard/scouting/team/$number")({
 
 function ScoutingTeamPage() {
   const params = Route.useParams();
-  const search = Route.useSearch();
-  const navigate = useNavigate();
   const teamNumber = Number(params.number);
   const { hasPermission } = useAuthContext();
   const canManageTags = hasPermission(PERMISSIONS.scoutingTeamManageTags);
@@ -73,15 +62,7 @@ function ScoutingTeamPage() {
   const [modalLink, setModalLink] = useState<string | null>(null);
   const [selectedResponseId, setSelectedResponseId] = useState<Id<"scoutingSessions"> | null>(null);
 
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/team/$number",
-      params,
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
+  const { resolvedCycleId } = useScoutingLayout();
   const teamPage = useFtcScoutTeamPage(teamNumber);
   const teamSummary = useQuery(
     api.scouting.teams.getTeamSummary,
@@ -115,20 +96,25 @@ function ScoutingTeamPage() {
     : [];
 
   return (
-    <ScoutingFrame
-      title={`Team ${teamNumber}`}
-      description="Tags, responses, external stats, and scout link generation for this team."
-      active="overview"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
-      {/* Back button + team name */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon-sm" asChild>
-          <Link to="/scouting" search={getScoutingSearch(resolvedCycleId)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+    <>
+      <nav
+        className="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground"
+        aria-label="Breadcrumb"
+      >
+        <Link
+          to="/scouting"
+          search={getScoutingSearch(resolvedCycleId)}
+          className="hover:text-foreground"
+        >
+          Home
+        </Link>
+        <span aria-hidden className="text-border">
+          /
+        </span>
+        <span className="font-medium text-foreground">Team {teamNumber}</span>
+      </nav>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold leading-tight">
             {teamPage.data?.name ?? `Team ${teamNumber}`}
@@ -534,7 +520,7 @@ function ScoutingTeamPage() {
           )}
         </DialogContent>
       </Dialog>
-    </ScoutingFrame>
+    </>
   );
 }
 

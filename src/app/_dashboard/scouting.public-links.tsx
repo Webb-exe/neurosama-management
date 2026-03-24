@@ -3,12 +3,8 @@ import { useMutation, useQuery } from "convex/react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { PublicLinkCard } from "@/components/scouting/PublicLinkCard";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import {
-  mergeScoutingSearch,
-  parseCycleSearch,
-} from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { mergeScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
@@ -37,13 +33,7 @@ function ScoutingPublicLinksDashboardPage() {
   const { hasPermission } = useAuthContext();
   const canManage = hasPermission(PERMISSIONS.scoutingFormsManage);
   const forms = useQuery(api.scouting.forms.listForms, canManage ? {} : "skip");
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/public-links",
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
+  const { resolvedCycleId } = useScoutingLayout();
   const publicLinks = useQuery(
     api.scouting.publicLinks.listDashboardPublicLinks,
     canManage
@@ -66,33 +56,25 @@ function ScoutingPublicLinksDashboardPage() {
 
   if (!canManage) {
     return (
-      <ScoutingFrame
-        title="Public Links"
-        description="Track reusable public scouting links and session usage."
-        active="publicLinks"
-        cycleId={resolvedCycleId}
-        onCycleChange={changeCycle}
-      >
-        <Card className="rounded-xl">
-          <CardHeader>
-            <CardTitle>Not authorized</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            You do not have permission to manage scouting public links.
-          </CardContent>
-        </Card>
-      </ScoutingFrame>
+      <Card className="rounded-xl">
+        <CardHeader>
+          <CardTitle>Not authorized</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          You do not have permission to manage scouting public links.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <ScoutingFrame
-      title="Public Links"
-      description="Monitor reusable public links, team-level caps, and session creation across the current scouting cycle."
-      active="publicLinks"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Public links</h2>
+        <p className="text-sm text-muted-foreground">
+          Reusable links for scouts and parents; monitor usage for the selected cycle.
+        </p>
+      </div>
       <Card className="rounded-2xl border-border/60 shadow-sm">
         <CardContent className="flex flex-wrap items-end gap-3 p-4">
           <div className="w-56">
@@ -171,7 +153,7 @@ function ScoutingPublicLinksDashboardPage() {
           />
         ))
       )}
-    </ScoutingFrame>
+    </div>
   );
 }
 

@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import { mergeScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
@@ -21,8 +20,7 @@ export const Route = createFileRoute("/_dashboard/scouting/cycles")({
 });
 
 function ScoutingCyclesPage() {
-  const search = Route.useSearch();
-  const navigate = useNavigate();
+  const { resolvedCycleId, changeCycle } = useScoutingLayout();
   const { hasPermission } = useAuthContext();
   const canManage = hasPermission(PERMISSIONS.scoutingCyclesManage);
   const createCycle = useMutation(api.scouting.cycles.createCycle);
@@ -32,44 +30,25 @@ function ScoutingCyclesPage() {
   const [newCycleName, setNewCycleName] = useState("");
   const [renameDrafts, setRenameDrafts] = useState<Record<string, string>>({});
 
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/cycles",
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
-
   if (!canManage) {
     return (
-      <ScoutingFrame
-        title="Cycles"
-        description="Create and manage scouting periods."
-        active="cycles"
-        cycleId={resolvedCycleId}
-        onCycleChange={changeCycle}
-      >
-        <Card className="rounded-xl">
-          <CardHeader className="p-4">
-            <CardTitle className="text-base">Not authorized</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
-            You do not have permission to create or archive scouting cycles.
-          </CardContent>
-        </Card>
-      </ScoutingFrame>
+      <Card className="rounded-xl">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base">Not authorized</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
+          You do not have permission to create or archive scouting cycles.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <ScoutingFrame
-      title="Cycles"
-      description="Create and manage scouting periods."
-      active="cycles"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Cycles</h2>
+        <p className="text-sm text-muted-foreground">Create and manage scouting periods.</p>
+      </div>
       <Card className="rounded-xl border-border/60 shadow-sm">
         <CardContent className="flex gap-2 p-4">
           <Input
@@ -177,6 +156,6 @@ function ScoutingCyclesPage() {
           })
         )}
       </div>
-    </ScoutingFrame>
+    </div>
   );
 }

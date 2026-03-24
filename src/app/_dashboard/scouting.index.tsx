@@ -4,13 +4,8 @@ import { useMutation, useQuery } from "convex/react";
 import { Search } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import {
-  getScoutingSearch,
-  mergeScoutingSearch,
-  parseCycleSearch,
-} from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { getScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +37,7 @@ export const Route = createFileRoute("/_dashboard/scouting/")({
 function ScoutingHomePage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const { resolvedCycleId } = useScoutingLayout();
   const { user } = useAuthContext();
   const canManage = userHasPermission(user, PERMISSIONS.scoutingFormsManage);
   const canReset = userHasPermission(user, PERMISSIONS.scoutingReset);
@@ -49,15 +45,6 @@ function ScoutingHomePage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const resetAllScoutingData = useMutation(api.scouting.admin.resetAllScoutingData);
-
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting",
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
   const cycle = useQuery(
     api.scouting.cycles.getActiveCycleDetail,
     resolvedCycleId ? { cycleId: resolvedCycleId as Id<"scoutingCycles"> } : "skip",
@@ -96,13 +83,13 @@ function ScoutingHomePage() {
   const isLoading = cycle === undefined && resolvedCycleId;
 
   return (
-    <ScoutingFrame
-      title="Scouting"
-      description="Monitor the current cycle and jump to teams, analysis, responses, or forms."
-      active="overview"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
+    <>
+      <div className="mb-4">
+        <h2 className="text-base font-semibold">Home</h2>
+        <p className="text-sm text-muted-foreground">
+          Snapshot for the selected cycle, team lookup, and shortcuts to data views.
+        </p>
+      </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
         <Card className="rounded-xl border-border/60 shadow-sm">
           <CardHeader className="p-4">
@@ -205,7 +192,7 @@ function ScoutingHomePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ScoutingFrame>
+    </>
   );
 }
 

@@ -3,13 +3,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { FileText, Plus } from "lucide-react";
 import { api } from "@/convex/_generated/api";
-import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
-import {
-  getScoutingSearch,
-  mergeScoutingSearch,
-  parseCycleSearch,
-} from "@/components/scouting/search";
-import { useCycleSelection } from "@/components/scouting/useCycleSelection";
+import { useScoutingLayout } from "@/components/scouting/ScoutingLayoutContext";
+import { getScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
 import { useAuthContext } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
@@ -29,52 +24,33 @@ export const Route = createFileRoute("/_dashboard/scouting/forms/")({
 });
 
 function ScoutingFormsPage() {
-  const search = Route.useSearch();
   const navigate = useNavigate();
+  const { resolvedCycleId } = useScoutingLayout();
   const { hasPermission } = useAuthContext();
   const canManage = hasPermission(PERMISSIONS.scoutingFormsManage);
   const forms = useQuery(api.scouting.forms.listForms, canManage ? {} : "skip");
   const createForm = useMutation(api.scouting.forms.createForm);
   const [newFormName, setNewFormName] = useState("");
 
-  const changeCycle = (cycleId: string) => {
-    navigate({
-      to: "/scouting/forms",
-      search: (previous) => mergeScoutingSearch(previous, { cycleId }),
-    });
-  };
-
-  const { resolvedCycleId } = useCycleSelection(search.cycleId, changeCycle);
-
   if (!canManage) {
     return (
-      <ScoutingFrame
-        title="Forms"
-        description="Create and manage scouting form workflows."
-        active="forms"
-        cycleId={resolvedCycleId}
-        onCycleChange={changeCycle}
-      >
-        <Card className="rounded-xl">
-          <CardHeader className="p-4">
-            <CardTitle className="text-base">Not authorized</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
-            You do not have permission to create or edit scouting forms.
-          </CardContent>
-        </Card>
-      </ScoutingFrame>
+      <Card className="rounded-xl">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base">Not authorized</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
+          You do not have permission to create or edit scouting forms.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <ScoutingFrame
-      title="Forms"
-      description="Create and manage scouting form workflows."
-      active="forms"
-      cycleId={resolvedCycleId}
-      onCycleChange={changeCycle}
-    >
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Forms</h2>
+        <p className="text-sm text-muted-foreground">Create and manage scouting form workflows.</p>
+      </div>
       <Card className="rounded-xl border-border/60 shadow-sm">
         <CardContent className="flex gap-2 p-4">
           <Input
@@ -181,6 +157,6 @@ function ScoutingFormsPage() {
           ))}
         </div>
       )}
-    </ScoutingFrame>
+    </div>
   );
 }
