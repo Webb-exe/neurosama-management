@@ -26,6 +26,7 @@ import type * as scouting_cycles from "../scouting/cycles.js";
 import type * as scouting_forms from "../scouting/forms.js";
 import type * as scouting_index from "../scouting/index.js";
 import type * as scouting_lib from "../scouting/lib.js";
+import type * as scouting_publicLinks from "../scouting/publicLinks.js";
 import type * as scouting_sessions from "../scouting/sessions.js";
 import type * as scouting_tags from "../scouting/tags.js";
 import type * as scouting_teams from "../scouting/teams.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   "scouting/forms": typeof scouting_forms;
   "scouting/index": typeof scouting_index;
   "scouting/lib": typeof scouting_lib;
+  "scouting/publicLinks": typeof scouting_publicLinks;
   "scouting/sessions": typeof scouting_sessions;
   "scouting/tags": typeof scouting_tags;
   "scouting/teams": typeof scouting_teams;

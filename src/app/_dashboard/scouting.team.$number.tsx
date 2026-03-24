@@ -224,68 +224,70 @@ function ScoutingTeamPage() {
           </Card>
 
           {/* Responses */}
-          <Card className="rounded-xl border-border/60 shadow-sm">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Responses</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              {teamSummary === undefined ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <Skeleton key={i} className="h-20 w-full rounded-lg" />
-                  ))}
-                </div>
-              ) : teamSummary.responses.length === 0 ? (
-                <p className="py-3 text-center text-sm text-muted-foreground">
-                  No responses in this cycle.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {teamSummary.responses.map((response) => (
-                    <div
-                      key={response._id}
-                      className="rounded-lg border border-border/50 p-3"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">
-                          {response.formName}
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            v{response.formVersionNumber}
-                          </span>
+          {canViewResponses ? (
+            <Card className="rounded-xl border-border/60 shadow-sm">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Responses</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                {teamSummary === undefined ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : teamSummary.responses.length === 0 ? (
+                  <p className="py-3 text-center text-sm text-muted-foreground">
+                    No responses in this cycle.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {teamSummary.responses.map((response) => (
+                      <div
+                        key={response._id}
+                        className="rounded-lg border border-border/50 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium">
+                            {response.formName}
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              v{response.formVersionNumber}
+                            </span>
+                          </p>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {response.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+                          {response.status === "submitted" && response.submittedAt
+                            ? new Date(response.submittedAt).toLocaleString()
+                            : `Autosaved ${new Date(response.lastAutosavedAt).toLocaleString()}`}
                         </p>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {response.status}
-                        </Badge>
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground/70">
-                        {response.status === "submitted" && response.submittedAt
-                          ? new Date(response.submittedAt).toLocaleString()
-                          : `Autosaved ${new Date(response.lastAutosavedAt).toLocaleString()}`}
-                      </p>
-                      <div className="mt-2 flex gap-1.5">
-                        {canViewResponseDetail && (
+                        <div className="mt-2 flex gap-1.5">
+                          {canViewResponseDetail && (
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => setSelectedResponseId(response._id)}
+                            >
+                              View
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="xs"
-                            onClick={() => setSelectedResponseId(response._id)}
+                            onClick={() => setModalLink(`${window.location.origin}${response.path}`)}
                           >
-                            View
+                            QR code
                           </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => setModalLink(`${window.location.origin}${response.path}`)}
-                        >
-                          QR code
-                        </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
         {/* Right sidebar */}
@@ -481,6 +483,7 @@ function ScoutingTeamPage() {
               <div className="rounded-lg border border-border/50 bg-muted/30 p-2.5 text-xs text-muted-foreground">
                 {responseDetail.formName} · {responseDetail.cycleName} · v
                 {responseDetail.formVersionNumber}
+                {responseDetail.publicLink ? ` · ${responseDetail.publicLink.label}` : ""}
               </div>
               {responseQuestions.map((question) => (
                 <div key={question.id} className="rounded-lg border border-border/50 p-2.5">

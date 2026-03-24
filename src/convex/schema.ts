@@ -117,11 +117,51 @@ const schema = defineEntSchema({
     .index("by_formId_versionNumber", ["formId", "versionNumber"])
     .index("by_formId_createdAt", ["formId", "createdAt"]),
 
+  scoutingPublicLinks: defineEnt({
+    token: v.string(),
+    cycleId: v.id("scoutingCycles"),
+    formId: v.id("scoutingForms"),
+    formVersionId: v.id("scoutingFormVersions"),
+    formNameSnapshot: v.string(),
+    formVersionNumberSnapshot: v.number(),
+    label: v.string(),
+    description: v.string(),
+    status: v.union(v.literal("active"), v.literal("disabled")),
+    accessMode: v.union(v.literal("anyTeam"), v.literal("selectedTeams")),
+    anyTeamSessionLimit: v.optional(v.number()),
+    totalSessionsCreated: v.number(),
+    totalSessionsSubmitted: v.number(),
+    lastSessionCreatedAt: v.optional(v.number()),
+    lastSessionSubmittedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_cycleId_status", ["cycleId", "status"])
+    .index("by_formId_createdAt", ["formId", "createdAt"]),
+
+  scoutingPublicLinkTeams: defineEnt({
+    publicLinkId: v.id("scoutingPublicLinks"),
+    teamNumber: v.number(),
+    sessionLimit: v.optional(v.number()),
+    sessionsCreated: v.number(),
+    sessionsSubmitted: v.number(),
+    lastSessionCreatedAt: v.optional(v.number()),
+    lastSessionSubmittedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_publicLinkId", ["publicLinkId"])
+    .index("by_publicLinkId_teamNumber", ["publicLinkId", "teamNumber"]),
+
   scoutingSessions: defineEnt({
     token: v.string(),
     cycleId: v.id("scoutingCycles"),
     formId: v.id("scoutingForms"),
     formVersionId: v.id("scoutingFormVersions"),
+    publicLinkId: v.optional(v.id("scoutingPublicLinks")),
+    publicLinkTeamId: v.optional(v.id("scoutingPublicLinkTeams")),
     formNameSnapshot: v.string(),
     formVersionNumberSnapshot: v.number(),
     status: v.union(
@@ -142,7 +182,8 @@ const schema = defineEntSchema({
     .index("by_cycleId_status", ["cycleId", "status"])
     .index("by_formId_status", ["formId", "status"])
     .index("by_cycleId_selectedTeamNumber", ["cycleId", "selectedTeamNumber"])
-    .index("by_formVersionId", ["formVersionId"]),
+    .index("by_formVersionId", ["formVersionId"])
+    .index("by_publicLinkId", ["publicLinkId"]),
 
   cycleTeamScouting: defineEnt({
     cycleId: v.id("scoutingCycles"),
