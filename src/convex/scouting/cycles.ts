@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCycleOrDefault, requireAdminUser, requireApprovedUser } from "./lib";
+import { PERMISSIONS } from "../../lib/permissions";
+import {
+  getCycleOrDefault,
+  requireApprovedUser,
+  requireScoutingPermission,
+} from "./lib";
 
 export const listCycles = query({
   args: {},
@@ -73,7 +78,10 @@ export const createCycle = mutation({
   },
   returns: v.id("scoutingCycles"),
   handler: async (ctx, args) => {
-    const user = await requireAdminUser(ctx);
+    const user = await requireScoutingPermission(
+      ctx,
+      PERMISSIONS.scoutingCyclesManage.key,
+    );
     const name = args.name.trim();
 
     if (!name) {
@@ -96,7 +104,7 @@ export const renameCycle = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingCyclesManage.key);
     const cycle = await ctx.db.get(args.cycleId);
     if (!cycle) {
       throw new Error("Scouting cycle not found");
@@ -118,7 +126,7 @@ export const archiveCycle = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingCyclesManage.key);
     const cycle = await ctx.db.get(args.cycleId);
     if (!cycle) {
       throw new Error("Scouting cycle not found");

@@ -1,5 +1,6 @@
 import { defineEnt, defineEntSchema, getEntDefinitions } from "convex-ents";
 import { v } from "convex/values";
+import { appRolesValidator } from "./auth/validators";
 
 const schema = defineEntSchema({
   // ========================================
@@ -24,7 +25,9 @@ const schema = defineEntSchema({
   // Approved users - references clerkInfo table
   users: defineEnt({
     clerkInfoId: v.id("clerkInfo"),
-    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    // Static role definitions live in code; these stored fields only capture assignments.
+    isOwner: v.optional(v.boolean()),
+    roles: v.optional(appRolesValidator),
   })
     .edge("clerkInfo", { to: "clerkInfo", field: "clerkInfoId" })
     .edges("invites", { ref: "invitedBy" }),

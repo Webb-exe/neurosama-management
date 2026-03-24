@@ -2,7 +2,17 @@ import { query, mutation, internalQuery, internalMutation } from "../functions";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { clerkUserInfoValidator } from "./clerk";
+import {
+  sortAppRoles,
+  normalizePermissionUser,
+  type AppRole,
+} from "../../lib/permissions";
+import {
+  appRoleValidator,
+  appRolesValidator,
+} from "./validators";
 
 // ============================================================================
 // CLERK INFO MANAGEMENT
@@ -88,7 +98,36 @@ export const getClerkInfoByClerkId = internalQuery({
 // AUTH STATUS & REGISTRATION
 // ============================================================================
 
-const roleValidator = v.union(v.literal("owner"), v.literal("admin"), v.literal("member"));
+const editableRoleValidator = appRoleValidator;
+
+const approvedUserShape = v.object({
+  _id: v.id("users"),
+  clerkInfoId: v.id("clerkInfo"),
+  isOwner: v.boolean(),
+  roles: appRolesValidator,
+});
+
+function normalizeApprovedUserRecord(user: {
+  _id: Id<"users">;
+  clerkInfoId: Id<"clerkInfo">;
+  isOwner?: boolean | undefined;
+  roles?: readonly string[] | undefined;
+}) {
+  const normalized = normalizePermissionUser(user);
+  if (!normalized) {
+    throw new Error("Invalid user record");
+  }
+  return {
+    _id: user._id,
+    clerkInfoId: user.clerkInfoId,
+    isOwner: normalized.isOwner,
+    roles: sortAppRoles(Array.from(new Set(normalized.roles))),
+  };
+}
+
+function normalizeRequestedRoles(roles: readonly AppRole[]) {
+  return sortAppRoles(Array.from(new Set(roles)));
+}
 
 /**
  * Get auth status
@@ -98,11 +137,7 @@ export const getAuthStatus = query({
   returns: v.union(
     v.object({
       status: v.literal("approved"),
-      user: v.object({
-        _id: v.id("users"),
-        clerkInfoId: v.id("clerkInfo"),
-        role: roleValidator,
-      }),
+      user: approvedUserShape,
     }),
     v.object({ status: v.literal("waitlisted") }),
     v.object({ status: v.literal("pending"), hasClerkInfo: v.boolean() }),
@@ -119,7 +154,7 @@ export const getAuthStatus = query({
     if (user) {
       return {
         status: "approved" as const,
-        user: { _id: user._id, clerkInfoId: user.clerkInfoId, role: user.role },
+        user: normalizeApprovedUserRecord(user),
       };
     }
 
@@ -138,11 +173,7 @@ export const ensureUserRegistered = mutation({
   returns: v.union(
     v.object({
       status: v.literal("approved"),
-      user: v.object({
-        _id: v.id("users"),
-        clerkInfoId: v.id("clerkInfo"),
-        role: roleValidator,
-      }),
+      user: approvedUserShape,
     }),
     v.object({ status: v.literal("waitlisted") }),
     v.object({ status: v.literal("not_allowed"), deleteFromClerk: v.boolean() })
@@ -175,7 +206,7 @@ export const ensureUserRegistered = mutation({
     if (existingUser) {
       return {
         status: "approved" as const,
-        user: { _id: existingUser._id, clerkInfoId: existingUser.clerkInfoId, role: existingUser.role },
+        user: normalizeApprovedUserRecord(existingUser),
       };
     }
 
@@ -186,10 +217,19 @@ export const ensureUserRegistered = mutation({
     // First user becomes owner
     const hasAnyUser = await ctx.table("users").first();
     if (!hasAnyUser) {
-      const userId = await ctx.table("users").insert({ clerkInfoId: clerkInfo._id, role: "owner" });
+      const userId = await ctx.table("users").insert({
+        clerkInfoId: clerkInfo._id,
+        isOwner: true,
+        roles: [],
+      });
       return {
         status: "approved" as const,
-        user: { _id: userId, clerkInfoId: clerkInfo._id, role: "owner" as const },
+        user: {
+          _id: userId,
+          clerkInfoId: clerkInfo._id,
+          isOwner: true,
+          roles: [],
+        },
       };
     }
 
@@ -224,7 +264,8 @@ const clerkInfoShape = v.object({
 const userWithClerkInfoShape = v.object({
   _id: v.id("users"),
   clerkInfoId: v.id("clerkInfo"),
-  role: roleValidator,
+  isOwner: v.boolean(),
+  roles: appRolesValidator,
   clerkInfo: clerkInfoShape,
 });
 
@@ -242,9 +283,7 @@ export const getUserInfo = internalQuery({
     if (!clerkInfo) return null;
 
     return {
-      _id: user._id,
-      clerkInfoId: user.clerkInfoId,
-      role: user.role,
+      ...normalizeApprovedUserRecord(user),
       clerkInfo: {
         _id: clerkInfo._id,
         clerkId: clerkInfo.clerkId,
@@ -365,7 +404,7 @@ export const listWaitlist = query({
 export const approveFromWaitlist = mutation({
   args: {
     waitlistId: v.id("waitlist"),
-    role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
+    roles: v.optional(v.array(editableRoleValidator)),
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
@@ -374,9 +413,11 @@ export const approveFromWaitlist = mutation({
     const entry = await ctx.table("waitlist").get(args.waitlistId);
     if (!entry) throw new Error("Waitlist entry not found");
 
+    const roles = normalizeRequestedRoles(args.roles ?? ["member"]);
     const userId = await ctx.table("users").insert({
       clerkInfoId: entry.clerkInfoId,
-      role: args.role ?? "member",
+      isOwner: false,
+      roles,
     });
 
     await entry.delete();
@@ -436,9 +477,7 @@ export const listUsers = query({
       result.page.map(async (user) => {
         const clerkInfo = await ctx.table("clerkInfo").getX(user.clerkInfoId);
         return {
-          _id: user._id,
-          clerkInfoId: user.clerkInfoId,
-          role: user.role,
+          ...normalizeApprovedUserRecord(user),
           clerkInfo: {
             _id: clerkInfo._id,
             clerkId: clerkInfo.clerkId,
@@ -497,22 +536,28 @@ export const listUsersForAssignment = query({
 });
 
 /**
- * Update user role - owner only
+ * Update user roles - admin/owner only
  */
-export const updateUserRole = mutation({
+export const updateUserRoles = mutation({
   args: {
     userId: v.id("users"),
-    role: v.union(v.literal("admin"), v.literal("member")),
+    roles: v.array(editableRoleValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal.auth.helpers.requireOwner, {});
+    await ctx.runQuery(internal.auth.helpers.requirePermission, {
+      permission: "users.manage_roles",
+    });
 
     const user = await ctx.table("users").get(args.userId);
     if (!user) throw new Error("User not found");
-    if (user.role === "owner") throw new Error("Cannot change owner role");
+    const normalizedUser = normalizeApprovedUserRecord(user);
+    if (normalizedUser.isOwner) throw new Error("Cannot change owner roles");
 
-    await user.patch({ role: args.role });
+    await user.patch({
+      isOwner: false,
+      roles: normalizeRequestedRoles(args.roles),
+    });
     return null;
   },
 });
@@ -529,11 +574,16 @@ export const removeUser = mutation({
   handler: async (ctx, args) => {
     const auth = await ctx.runQuery(internal.auth.helpers.getCurrentUser, {});
     if (!auth) throw new Error("Not authenticated");
-    if (auth.role !== "owner" && auth.role !== "admin") throw new Error("Not authorized - owner or admin required");
+    const canRemoveUser = await ctx.runQuery(internal.auth.helpers.hasPermission, {
+      userId: auth.userId,
+      permission: "users.remove",
+    });
+    if (!canRemoveUser) throw new Error("Not authorized - users.remove required");
 
     const user = await ctx.table("users").get(args.userId);
     if (!user) throw new Error("User not found");
-    if (user.role === "owner" && user._id !== auth.userId) throw new Error("Cannot remove owner");
+    const normalizedUser = normalizeApprovedUserRecord(user);
+    if (normalizedUser.isOwner && user._id !== auth.userId) throw new Error("Cannot remove owner");
 
     const clerkInfo = await ctx.table("clerkInfo").get(user.clerkInfoId);
     
@@ -562,7 +612,7 @@ export const deleteUserByClerkId = internalMutation({
     if (!clerkInfo) return null;
 
     const user = await ctx.table("users").get("clerkInfoId", clerkInfo._id);
-    if (user && user.role === "owner") {
+    if (user && normalizeApprovedUserRecord(user).isOwner) {
       throw new Error("Cannot delete owner");
     }
 

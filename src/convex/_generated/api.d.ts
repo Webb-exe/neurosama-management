@@ -13,6 +13,7 @@ import type * as auth_helpers from "../auth/helpers.js";
 import type * as auth_index from "../auth/index.js";
 import type * as auth_invites from "../auth/invites.js";
 import type * as auth_users from "../auth/users.js";
+import type * as auth_validators from "../auth/validators.js";
 import type * as calender_FirstEvents from "../calender/FirstEvents.js";
 import type * as calender_main from "../calender/main.js";
 import type * as crons from "../crons.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   "auth/index": typeof auth_index;
   "auth/invites": typeof auth_invites;
   "auth/users": typeof auth_users;
+  "auth/validators": typeof auth_validators;
   "calender/FirstEvents": typeof calender_FirstEvents;
   "calender/main": typeof calender_main;
   crons: typeof crons;

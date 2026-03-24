@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
+import { PERMISSIONS } from "../../lib/permissions";
 import { normalizeFormItems, type ScoutingFormItem } from "../../lib/scouting";
-import { requireAdminUser } from "./lib";
+import { requireScoutingPermission } from "./lib";
 
 export const listForms = query({
   args: {},
@@ -17,7 +18,7 @@ export const listForms = query({
     }),
   ),
   handler: async (ctx) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingFormsManage.key);
 
     const forms = await ctx.db.query("scoutingForms").collect();
     const versions = await ctx.db.query("scoutingFormVersions").collect();
@@ -52,7 +53,7 @@ export const listPublishedForms = query({
     }),
   ),
   handler: async (ctx) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingPublishedFormsView.key);
 
     const forms = await ctx.db.query("scoutingForms").collect();
     const publishedForms = [];
@@ -128,7 +129,7 @@ export const getFormEditor = query({
     ),
   }),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingFormsManage.key);
 
     const form = await ctx.db.get(args.formId);
     if (!form) {
@@ -187,7 +188,10 @@ export const createForm = mutation({
   },
   returns: v.id("scoutingForms"),
   handler: async (ctx, args) => {
-    const user = await requireAdminUser(ctx);
+    const user = await requireScoutingPermission(
+      ctx,
+      PERMISSIONS.scoutingFormsManage.key,
+    );
     const name = args.name.trim();
 
     if (!name) {
@@ -234,7 +238,10 @@ export const saveFormDraft = mutation({
   },
   returns: v.id("scoutingFormVersions"),
   handler: async (ctx, args) => {
-    const user = await requireAdminUser(ctx);
+    const user = await requireScoutingPermission(
+      ctx,
+      PERMISSIONS.scoutingFormsManage.key,
+    );
     const form = await ctx.db.get(args.formId);
     if (!form) {
       throw new Error("Form not found");
@@ -305,7 +312,10 @@ export const publishDraft = mutation({
   },
   returns: v.id("scoutingFormVersions"),
   handler: async (ctx, args) => {
-    const user = await requireAdminUser(ctx);
+    const user = await requireScoutingPermission(
+      ctx,
+      PERMISSIONS.scoutingFormsManage.key,
+    );
     const form = await ctx.db.get(args.formId);
     if (!form || !form.draftVersionId) {
       throw new Error("Draft version not found");

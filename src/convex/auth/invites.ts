@@ -2,6 +2,7 @@ import { query, mutation, internalMutation } from "../functions";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
+import { PERMISSIONS } from "../../lib/permissions";
 
 // ============================================================================
 // INVITE MANAGEMENT
@@ -17,7 +18,13 @@ export const recordInvite = internalMutation({
     const user = await ctx.runQuery(internal.auth.helpers.getCurrentUser, {});
     if (!user) throw new Error("User not found");
 
-    if (user.role !== "admin" && user.role !== "owner") throw new Error("User not authorized to record invites");
+    const canManageInvites = await ctx.runQuery(internal.auth.helpers.hasPermission, {
+      userId: user.userId,
+      permission: PERMISSIONS.invitesManage.key,
+    });
+    if (!canManageInvites) {
+      throw new Error("User not authorized to record invites");
+    }
 
     // Check if already recorded
     const existing = await ctx.table("invites").get("by_clerkInviteId", args.clerkInviteId);
@@ -52,7 +59,9 @@ export const listInvites = query({
     continueCursor: v.string(),
   }),
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal.auth.helpers.requireAdmin, {});
+    await ctx.runQuery(internal.auth.helpers.requirePermission, {
+      permission: PERMISSIONS.invitesManage.key,
+    });
 
     const result = await ctx.table("invites").order("desc").paginate(args.paginationOpts);
 
@@ -77,7 +86,9 @@ export const revokeInvite = mutation({
   args: { inviteId: v.id("invites") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal.auth.helpers.requireAdmin, {});
+    await ctx.runQuery(internal.auth.helpers.requirePermission, {
+      permission: PERMISSIONS.invitesManage.key,
+    });
 
     const invite = await ctx.table("invites").get(args.inviteId);
     if (!invite) throw new Error("Invite not found");

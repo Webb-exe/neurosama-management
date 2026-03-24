@@ -14,9 +14,9 @@ import {
   applySessionTags,
   generateSessionToken,
   getCycleById,
-  hashToken,
-  requireAdminUser,
+  requireScoutingPermission,
 } from "./lib";
+import { PERMISSIONS } from "../../lib/permissions";
 
 function coerceAnswers(
   questions: ScoutingQuestion[],
@@ -71,12 +71,6 @@ export const generateSessionLink = mutation({
     path: v.string(),
   }),
   handler: async (ctx, args) => {
-    const user = await requireAdminUser(ctx);
-    const cycle = await getCycleById(ctx, args.cycleId);
-    if (cycle.status !== "active") {
-      throw new Error("Links can only be generated for active cycles");
-    }
-
     const form = await ctx.db.get(args.formId);
     if (!form || !form.latestPublishedVersionId) {
       throw new Error("Published form not found");
@@ -85,6 +79,16 @@ export const generateSessionLink = mutation({
     const version = await ctx.db.get(form.latestPublishedVersionId);
     if (!version || version.versionNumber === undefined) {
       throw new Error("Published form version not found");
+    }
+
+    const requiredPermission =
+      version.teamBindingMode === "preselected"
+        ? PERMISSIONS.scoutingSessionCreateTeam.key
+        : PERMISSIONS.scoutingSessionCreatePublic.key;
+    const user = await requireScoutingPermission(ctx, requiredPermission);
+    const cycle = await getCycleById(ctx, args.cycleId);
+    if (cycle.status !== "active") {
+      throw new Error("Links can only be generated for active cycles");
     }
 
     if (
@@ -332,7 +336,7 @@ export const listResponses = query({
     }),
   ),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingResponsesView.key);
     const cycle = await getCycleById(ctx, args.cycleId);
 
     const sessions = await ctx.db
@@ -390,7 +394,7 @@ export const getResponseDetail = query({
     lastAutosavedAt: v.number(),
   }),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingResponsesView.key);
 
     const session = await ctx.db.get(args.sessionId);
     if (!session) {

@@ -8,6 +8,7 @@ import { ScoutingFrame } from "@/components/scouting/ScoutingFrame";
 import { mergeScoutingSearch, parseCycleSearch } from "@/components/scouting/search";
 import { useCycleSelection } from "@/components/scouting/useCycleSelection";
 import { useAuthContext } from "@/context/AuthContext";
+import { PERMISSIONS } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,8 +23,8 @@ export const Route = createFileRoute("/_dashboard/scouting/cycles")({
 function ScoutingCyclesPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { user } = useAuthContext();
-  const canManage = user?.role === "owner" || user?.role === "admin";
+  const { hasPermission } = useAuthContext();
+  const canManage = hasPermission(PERMISSIONS.scoutingCyclesManage);
   const createCycle = useMutation(api.scouting.cycles.createCycle);
   const renameCycle = useMutation(api.scouting.cycles.renameCycle);
   const archiveCycle = useMutation(api.scouting.cycles.archiveCycle);
@@ -54,7 +55,7 @@ function ScoutingCyclesPage() {
             <CardTitle className="text-base">Not authorized</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 text-sm text-muted-foreground">
-            Only admins can create or archive scouting cycles.
+            You do not have permission to create or archive scouting cycles.
           </CardContent>
         </Card>
       </ScoutingFrame>

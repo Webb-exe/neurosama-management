@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { getCycleById, requireApprovedUser } from "./lib";
+import { PERMISSIONS, userHasPermission } from "../../lib/permissions";
+import { getCycleById, requireApprovedUser, requireScoutingPermission } from "./lib";
 
 function compareAscii(left: string, right: string) {
   if (left === right) {
@@ -62,8 +63,13 @@ export const getTeamSummary = query({
     ),
   }),
   handler: async (ctx, args) => {
-    await requireApprovedUser(ctx);
+    const user = await requireApprovedUser(ctx);
+    if (!userHasPermission(user, PERMISSIONS.scoutingView.key)) {
+      throw new Error(`Not authorized - ${PERMISSIONS.scoutingView.key} required`);
+    }
     const cycle = await getCycleById(ctx, args.cycleId);
+    const canViewTags = userHasPermission(user, PERMISSIONS.scoutingTeamViewTags.key);
+    const canViewResponses = userHasPermission(user, PERMISSIONS.scoutingTeamViewResponses.key);
 
     const teamRecord = await ctx.db
       .query("cycleTeamScouting")
@@ -85,31 +91,33 @@ export const getTeamSummary = query({
       },
       team: {
         teamNumber: args.teamNumber,
-        tags: teamRecord?.tags ?? {},
-        responseCount: teamRecord?.responseCount ?? 0,
-        lastResponseAt: teamRecord?.lastResponseAt ?? null,
+        tags: canViewTags ? (teamRecord?.tags ?? {}) : {},
+        responseCount: canViewResponses ? (teamRecord?.responseCount ?? 0) : 0,
+        lastResponseAt: canViewResponses ? (teamRecord?.lastResponseAt ?? null) : null,
         updatedAt: teamRecord?.updatedAt ?? null,
       },
-      responses: sessions
-        .filter(
-          (session) =>
-            session.selectedTeamNumber === args.teamNumber ||
-            session.preselectedTeamNumber === args.teamNumber,
-        )
-        .sort((left, right) => {
-          const leftTime = left.submittedAt ?? left.lastAutosavedAt;
-          const rightTime = right.submittedAt ?? right.lastAutosavedAt;
-          return rightTime - leftTime;
-        })
-        .map((session) => ({
-          _id: session._id,
-          formName: session.formNameSnapshot,
-          formVersionNumber: session.formVersionNumberSnapshot,
-          status: session.status,
-          submittedAt: session.submittedAt ?? null,
-          lastAutosavedAt: session.lastAutosavedAt,
-          path: `/scouting/session/${session.token}`,
-        })),
+      responses: canViewResponses
+        ? sessions
+            .filter(
+              (session) =>
+                session.selectedTeamNumber === args.teamNumber ||
+                session.preselectedTeamNumber === args.teamNumber,
+            )
+            .sort((left, right) => {
+              const leftTime = left.submittedAt ?? left.lastAutosavedAt;
+              const rightTime = right.submittedAt ?? right.lastAutosavedAt;
+              return rightTime - leftTime;
+            })
+            .map((session) => ({
+              _id: session._id,
+              formName: session.formNameSnapshot,
+              formVersionNumber: session.formVersionNumberSnapshot,
+              status: session.status,
+              submittedAt: session.submittedAt ?? null,
+              lastAutosavedAt: session.lastAutosavedAt,
+              path: `/scouting/session/${session.token}`,
+            }))
+        : [],
     };
   },
 });
@@ -140,7 +148,7 @@ export const getAnalysis = query({
     ),
   }),
   handler: async (ctx, args) => {
-    await requireApprovedUser(ctx);
+    await requireScoutingPermission(ctx, PERMISSIONS.scoutingAnalysisView.key);
     const cycle = await getCycleById(ctx, args.cycleId);
 
     const records = await ctx.db
