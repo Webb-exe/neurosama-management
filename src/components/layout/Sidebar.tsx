@@ -9,6 +9,8 @@ import {
   CalendarDays,
   Trophy,
   Search,
+  Package,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/context/AuthContext";
@@ -87,6 +89,23 @@ const navSections: NavSection[] = [
         href: "/tasks",
         label: "My Tasks",
         icon: CheckSquare,
+      },
+    ],
+  },
+  {
+    title: "OPERATIONS",
+    items: [
+      {
+        href: "/inventory",
+        label: "Inventory",
+        icon: Package,
+        permission: "inventoryCatalogView",
+      },
+      {
+        href: "/finance",
+        label: "Finance",
+        icon: Wallet,
+        permission: "financeInvoicesViewOwn",
       },
     ],
   },

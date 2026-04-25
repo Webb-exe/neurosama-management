@@ -6,6 +6,10 @@ export const appRoleValidator = v.union(
   v.literal("admin"),
   v.literal("scout"),
   v.literal("scout_admin"),
+  v.literal("finance_member"),
+  v.literal("finance_lead"),
+  v.literal("logistics_member"),
+  v.literal("logistics_lead"),
 );
 
 export const appRolesValidator = v.array(appRoleValidator);

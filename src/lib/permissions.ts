@@ -3,6 +3,10 @@ export const APP_ROLES = [
   "admin",
   "scout",
   "scout_admin",
+  "finance_member",
+  "finance_lead",
+  "logistics_member",
+  "logistics_lead",
 ] as const;
 
 export type AppRole = (typeof APP_ROLES)[number];
@@ -108,6 +112,96 @@ export const PERMISSIONS = {
     label: "Reset scouting data",
     description: "Delete all stored scouting data.",
   },
+  inventoryCatalogView: {
+    key: "inventory.catalog.view",
+    label: "View inventory catalog",
+    description: "Read suppliers and inventory item definitions.",
+  },
+  inventoryCatalogManage: {
+    key: "inventory.catalog.manage",
+    label: "Manage inventory catalog",
+    description: "Create and update suppliers and inventory item definitions.",
+  },
+  inventoryLocationsView: {
+    key: "inventory.locations.view",
+    label: "View storage locations",
+    description: "Read shelves, boxes, and item location quantities.",
+  },
+  inventoryLocationsManage: {
+    key: "inventory.locations.manage",
+    label: "Manage storage locations",
+    description: "Create and update shelves and boxes.",
+  },
+  inventoryStockManage: {
+    key: "inventory.stock.manage",
+    label: "Manage inventory stock",
+    description: "Move stock between unsorted, box, and used-on-robot quantities.",
+  },
+  logisticsInvoiceReceived: {
+    key: "logistics.invoice.received",
+    label: "Mark logistics invoice received",
+    description: "Mark approved invoices as received and add their items to inventory.",
+  },
+  financeInvoicesCreateOwn: {
+    key: "finance.invoices.create_own",
+    label: "Create own invoices",
+    description: "Create invoices where the purchaser is the current user.",
+  },
+  financeInvoicesEditOwnDraft: {
+    key: "finance.invoices.edit_own_draft",
+    label: "Edit own draft invoices",
+    description: "Edit draft invoices created for the current user.",
+  },
+  financeInvoicesSubmitOwn: {
+    key: "finance.invoices.submit_own",
+    label: "Submit own invoices",
+    description: "Submit the current user's invoices for approval.",
+  },
+  financeInvoicesViewOwn: {
+    key: "finance.invoices.view_own",
+    label: "View own invoices",
+    description: "View the current user's invoices and reimbursements.",
+  },
+  financeInvoicesViewAll: {
+    key: "finance.invoices.view_all",
+    label: "View all invoices",
+    description: "View invoices across all users and accounts.",
+  },
+  financeInvoicesAssignPurchaser: {
+    key: "finance.invoices.assign_purchaser",
+    label: "Assign invoice purchaser",
+    description: "Create invoices for another approved user.",
+  },
+  financeInvoicesApprove: {
+    key: "finance.invoices.approve",
+    label: "Approve invoices",
+    description: "Approve, reject, or void submitted invoices.",
+  },
+  financeAccountsView: {
+    key: "finance.accounts.view",
+    label: "View finance accounts",
+    description: "View finance accounts and calculated balances.",
+  },
+  financeAccountsManage: {
+    key: "finance.accounts.manage",
+    label: "Manage finance accounts",
+    description: "Create and update finance accounts.",
+  },
+  financeAccountsFundingManage: {
+    key: "finance.accounts.funding.manage",
+    label: "Manage account funding",
+    description: "Add funding and adjustment rows to finance accounts.",
+  },
+  financeSplitsManage: {
+    key: "finance.splits.manage",
+    label: "Manage invoice account splits",
+    description: "Create and update account splits for invoices.",
+  },
+  financeReimbursementsRecord: {
+    key: "finance.reimbursements.record",
+    label: "Record reimbursements",
+    description: "Record reimbursements to member accounts.",
+  },
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]["key"];
@@ -127,6 +221,10 @@ export const APP_ROLE_LABELS: Record<AppRole, string> = {
   admin: "Admin",
   scout: "Scout",
   scout_admin: "Scout Admin",
+  finance_member: "Finance Member",
+  finance_lead: "Finance Lead",
+  logistics_member: "Logistics Member",
+  logistics_lead: "Logistics Lead",
 };
 
 const MEMBER_PERMISSION_KEYS: PermissionKey[] = [
@@ -160,6 +258,40 @@ const SCOUT_ADMIN_PERMISSION_KEYS: PermissionKey[] = [
   PERMISSIONS.scoutingReset.key,
 ];
 
+const FINANCE_MEMBER_PERMISSION_KEYS: PermissionKey[] = [
+  PERMISSIONS.inventoryCatalogView.key,
+  PERMISSIONS.financeInvoicesCreateOwn.key,
+  PERMISSIONS.financeInvoicesEditOwnDraft.key,
+  PERMISSIONS.financeInvoicesSubmitOwn.key,
+  PERMISSIONS.financeInvoicesViewOwn.key,
+];
+
+const FINANCE_LEAD_PERMISSION_KEYS: PermissionKey[] = [
+  ...FINANCE_MEMBER_PERMISSION_KEYS,
+  PERMISSIONS.inventoryCatalogManage.key,
+  PERMISSIONS.financeInvoicesViewAll.key,
+  PERMISSIONS.financeInvoicesAssignPurchaser.key,
+  PERMISSIONS.financeInvoicesApprove.key,
+  PERMISSIONS.financeAccountsView.key,
+  PERMISSIONS.financeAccountsManage.key,
+  PERMISSIONS.financeAccountsFundingManage.key,
+  PERMISSIONS.financeSplitsManage.key,
+  PERMISSIONS.financeReimbursementsRecord.key,
+];
+
+const LOGISTICS_MEMBER_PERMISSION_KEYS: PermissionKey[] = [
+  PERMISSIONS.inventoryCatalogView.key,
+  PERMISSIONS.inventoryLocationsView.key,
+  PERMISSIONS.inventoryStockManage.key,
+  PERMISSIONS.logisticsInvoiceReceived.key,
+];
+
+const LOGISTICS_LEAD_PERMISSION_KEYS: PermissionKey[] = [
+  ...LOGISTICS_MEMBER_PERMISSION_KEYS,
+  PERMISSIONS.inventoryCatalogManage.key,
+  PERMISSIONS.inventoryLocationsManage.key,
+];
+
 const ADMIN_PERMISSION_KEYS: PermissionKey[] = [
   ...SCOUT_ADMIN_PERMISSION_KEYS,
   PERMISSIONS.adminAccess.key,
@@ -168,6 +300,7 @@ const ADMIN_PERMISSION_KEYS: PermissionKey[] = [
   PERMISSIONS.usersRemove.key,
   PERMISSIONS.settingsManage.key,
   PERMISSIONS.invitesManage.key,
+  PERMISSIONS.logisticsInvoiceReceived.key,
 ];
 
 const ROLE_PERMISSION_KEYS: Record<AppRole, PermissionKey[]> = {
@@ -175,6 +308,10 @@ const ROLE_PERMISSION_KEYS: Record<AppRole, PermissionKey[]> = {
   admin: ADMIN_PERMISSION_KEYS,
   scout: SCOUT_PERMISSION_KEYS,
   scout_admin: SCOUT_ADMIN_PERMISSION_KEYS,
+  finance_member: FINANCE_MEMBER_PERMISSION_KEYS,
+  finance_lead: FINANCE_LEAD_PERMISSION_KEYS,
+  logistics_member: LOGISTICS_MEMBER_PERMISSION_KEYS,
+  logistics_lead: LOGISTICS_LEAD_PERMISSION_KEYS,
 };
 
 export type PermissionUser = {

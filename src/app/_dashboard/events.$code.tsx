@@ -449,12 +449,14 @@ function MatchRow({
               {redTeams.map((t, i) => (
                 <span key={t.teamNumber}>
                   {i > 0 && " / "}
-                  <button
-                    onClick={() => onTeamClick(t.teamNumber)}
+                  <Link
+                    to="/scouting/team/$number"
+                    params={{ number: t.teamNumber.toString() }}
+                    search={getScoutingSearch()}
                     className="hover:underline hover:text-primary"
                   >
                     {t.teamNumber}
-                  </button>
+                  </Link>
                 </span>
               ))}
             </span>

@@ -74,6 +74,226 @@ const schema = defineEntSchema({
     .index("by_endDate", ["endDate"])
     .edge("firstEvent", { to: "calenderFirstEvents", field: "firstEventId", optional: true }),
 
+  // ========================================
+  // INVENTORY + FINANCE
+  // ========================================
+
+  inventorySuppliers: defineEnt({
+    name: v.string(),
+    description: v.string(),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active", ["active"])
+    .index("by_name", ["name"])
+    .index("by_createdAt", ["createdAt"]),
+
+  inventoryItems: defineEnt({
+    name: v.string(),
+    description: v.string(),
+    supplierId: v.id("inventorySuppliers"),
+    sku: v.optional(v.string()),
+    partNumber: v.optional(v.string()),
+    defaultUnit: v.string(),
+    defaultUnitCostCents: v.optional(v.number()),
+    totalQuantity: v.number(),
+    usedOnRobotQuantity: v.number(),
+    usedByMemberQuantity: v.optional(v.number()),
+    disableOutOfStockWarnings: v.optional(v.boolean()),
+    approvalStatus: v.optional(
+      v.union(v.literal("draft"), v.literal("approved"), v.literal("rejected")),
+    ),
+    createdFromInvoiceId: v.optional(v.id("invoices")),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_supplierId", ["supplierId"])
+    .index("by_supplierId_and_active", ["supplierId", "active"])
+    .index("by_active", ["active"])
+    .index("by_name", ["name"])
+    .index("by_sku", ["sku"]),
+
+  storageShelves: defineEnt({
+    name: v.string(),
+    description: v.string(),
+    physicalLocationLabel: v.string(),
+    sortOrder: v.number(),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active_and_sortOrder", ["active", "sortOrder"])
+    .index("by_sortOrder", ["sortOrder"]),
+
+  storageBoxes: defineEnt({
+    shelfId: v.id("storageShelves"),
+    label: v.string(),
+    description: v.string(),
+    physicalLocationLabel: v.optional(v.string()),
+    visualRow: v.optional(v.number()),
+    visualColumn: v.optional(v.number()),
+    visualRowSpan: v.optional(v.number()),
+    visualColumnSpan: v.optional(v.number()),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_shelfId", ["shelfId"])
+    .index("by_shelfId_and_active", ["shelfId", "active"])
+    .index("by_shelfId_and_label", ["shelfId", "label"]),
+
+  inventoryBoxItems: defineEnt({
+    boxId: v.id("storageBoxes"),
+    itemId: v.id("inventoryItems"),
+    quantity: v.number(),
+    unit: v.string(),
+    notes: v.string(),
+    updatedBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_boxId", ["boxId"])
+    .index("by_itemId", ["itemId"])
+    .index("by_boxId_and_itemId", ["boxId", "itemId"]),
+
+  financeAccounts: defineEnt({
+    name: v.string(),
+    type: v.union(
+      v.literal("team"),
+      v.literal("grant"),
+      v.literal("member"),
+      v.literal("sponsor"),
+      v.literal("other"),
+    ),
+    linkedUserId: v.optional(v.id("users")),
+    description: v.string(),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active", ["active"])
+    .index("by_type", ["type"])
+    .index("by_linkedUserId", ["linkedUserId"]),
+
+  financeAccountFundingRows: defineEnt({
+    accountId: v.id("financeAccounts"),
+    source: v.string(),
+    amountCents: v.number(),
+    fundedAt: v.number(),
+    notes: v.string(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_accountId", ["accountId"])
+    .index("by_accountId_and_fundedAt", ["accountId", "fundedAt"])
+    .index("by_fundedAt", ["fundedAt"]),
+
+  invoices: defineEnt({
+    supplierId: v.id("inventorySuppliers"),
+    purchasedByUserId: v.id("users"),
+    createdByUserId: v.id("users"),
+    invoiceDate: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("submitted"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("void"),
+    ),
+    reimbursementStatus: v.union(
+      v.literal("not_required"),
+      v.literal("pending"),
+      v.literal("partial"),
+      v.literal("reimbursed"),
+    ),
+    subtotalCents: v.number(),
+    taxCents: v.number(),
+    shippingCents: v.number(),
+    discountCents: v.number(),
+    totalCents: v.number(),
+    notes: v.string(),
+    submittedAt: v.optional(v.number()),
+    approvedByUserId: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    rejectedByUserId: v.optional(v.id("users")),
+    rejectedAt: v.optional(v.number()),
+    rejectionReason: v.optional(v.string()),
+    voidedByUserId: v.optional(v.id("users")),
+    voidedAt: v.optional(v.number()),
+    inventoryReceivedByUserId: v.optional(v.id("users")),
+    inventoryReceivedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_supplierId", ["supplierId"])
+    .index("by_purchasedByUserId", ["purchasedByUserId"])
+    .index("by_createdByUserId", ["createdByUserId"])
+    .index("by_status", ["status"])
+    .index("by_reimbursementStatus", ["reimbursementStatus"])
+    .index("by_invoiceDate", ["invoiceDate"])
+    .index("by_purchasedByUserId_and_invoiceDate", ["purchasedByUserId", "invoiceDate"]),
+
+  invoiceLineItems: defineEnt({
+    invoiceId: v.id("invoices"),
+    itemId: v.id("inventoryItems"),
+    itemNameSnapshot: v.string(),
+    itemSkuSnapshot: v.optional(v.string()),
+    itemPartNumberSnapshot: v.optional(v.string()),
+    description: v.string(),
+    quantity: v.number(),
+    unit: v.string(),
+    unitCostCents: v.number(),
+    taxCents: v.number(),
+    shippingCents: v.number(),
+    discountCents: v.number(),
+    lineTotalCents: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_invoiceId", ["invoiceId"])
+    .index("by_itemId", ["itemId"])
+    .index("by_invoiceId_and_itemId", ["invoiceId", "itemId"]),
+
+  invoiceAccountSplits: defineEnt({
+    invoiceId: v.id("invoices"),
+    accountId: v.id("financeAccounts"),
+    amountCents: v.number(),
+    notes: v.string(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_invoiceId", ["invoiceId"])
+    .index("by_accountId", ["accountId"])
+    .index("by_invoiceId_and_accountId", ["invoiceId", "accountId"]),
+
+  invoiceReimbursements: defineEnt({
+    invoiceId: v.id("invoices"),
+    reimbursedToUserId: v.id("users"),
+    reimbursedToAccountId: v.optional(v.id("financeAccounts")),
+    sourceAccountId: v.id("financeAccounts"),
+    amountCents: v.number(),
+    reimbursedAt: v.number(),
+    notes: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_invoiceId", ["invoiceId"])
+    .index("by_reimbursedToUserId", ["reimbursedToUserId"])
+    .index("by_reimbursedToAccountId", ["reimbursedToAccountId"])
+    .index("by_sourceAccountId", ["sourceAccountId"])
+    .index("by_reimbursedAt", ["reimbursedAt"]),
+
   scoutingCycles: defineEnt({
     name: v.string(),
     status: v.union(v.literal("active"), v.literal("archived")),
